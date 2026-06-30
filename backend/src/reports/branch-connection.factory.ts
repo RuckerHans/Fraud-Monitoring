@@ -16,15 +16,16 @@ export class BranchConnectionFactory {
     try {
       try {
         await source.initialize();
-      } catch {
-        throw new BranchUnreachableError('Branch connection failed');
+      } catch (error: any) {
+        const code = this.errorCode(error);
+        throw new BranchUnreachableError(this.connectionMessage(code), code);
       }
       try {
         return await operation(source);
       } catch (error: any) {
-        const code = String(error?.code ?? error?.originalError?.code ?? '');
+        const code = this.errorCode(error);
         if (['ETIMEOUT', 'ESOCKET', 'ECONNCLOSED', 'ELOGIN'].includes(code)) {
-          throw new BranchUnreachableError('Branch query connection failed');
+          throw new BranchUnreachableError(this.connectionMessage(code), code);
         }
         throw error;
       }
@@ -50,5 +51,24 @@ export class BranchConnectionFactory {
         pool: { max: 2, min: 0, idleTimeoutMillis: 10_000 },
       },
     });
+  }
+
+  private errorCode(error: any): string {
+    return String(
+      error?.code ??
+      error?.originalError?.code ??
+      error?.driverError?.code ??
+      error?.driverError?.originalError?.code ??
+      '',
+    ).toUpperCase();
+  }
+
+  private connectionMessage(code: string): string {
+    if (code === 'ELOGIN') return 'The branch database rejected its configured login.';
+    if (code === 'ETIMEOUT') return 'The branch database connection timed out.';
+    if (['ESOCKET', 'ECONNCLOSED', 'ECONNREFUSED'].includes(code)) {
+      return 'The branch database server is unreachable.';
+    }
+    return 'The branch database connection could not be established.';
   }
 }

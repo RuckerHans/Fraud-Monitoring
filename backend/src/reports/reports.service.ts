@@ -52,11 +52,14 @@ export class ReportsService {
         total += Number(countRows[0]?.total ?? 0);
         rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
         this.logQuery('branch_query', branch, query, user, started, branchRows.length);
-      } catch {
-        warnings.push(`${branch.branchlocation || branch.branchcode} could not be queried.`);
+      } catch (error) {
+        const reason = this.branchFailureReason(error);
+        warnings.push(`${branch.branchlocation || branch.branchcode}: ${reason}`);
         this.logger.warn({
           event: 'branch_query_failed',
           branchId: String(branch.id),
+          reason,
+          errorCode: error instanceof BranchUnreachableError ? error.code : undefined,
           from: query.from,
           to: query.to,
           user,
@@ -65,7 +68,7 @@ export class ReportsService {
       }
     }
     if (successfulBranches === 0) {
-      throw new BranchUnreachableError('None of the selected branches could be queried.');
+      throw new BranchUnreachableError(warnings.join(' '));
     }
     const offset = (query.page - 1) * query.pageSize;
     const pageRows = rows
@@ -180,5 +183,21 @@ export class ReportsService {
       durationMs: Date.now() - started,
       rowCount,
     });
+  }
+
+  private branchFailureReason(error: unknown): string {
+    if (error instanceof BranchUnreachableError) return error.message;
+    if (error && typeof error === 'object') {
+      const value = error as {
+        name?: string;
+        code?: string;
+        driverError?: { code?: string };
+      };
+      const code = value.code ?? value.driverError?.code;
+      if (value.name === 'QueryFailedError' || code === 'EREQUEST') {
+        return 'The report query does not match this branch database schema.';
+      }
+    }
+    return 'The branch report query failed.';
   }
 }
