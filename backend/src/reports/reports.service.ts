@@ -60,6 +60,7 @@ export class ReportsService {
           branchId: String(branch.id),
           reason,
           errorCode: error instanceof BranchUnreachableError ? error.code : undefined,
+          databaseError: this.databaseErrorForLog(error),
           from: query.from,
           to: query.to,
           user,
@@ -199,5 +200,25 @@ export class ReportsService {
       }
     }
     return 'The branch report query failed.';
+  }
+
+  private databaseErrorForLog(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object') return undefined;
+    const value = error as {
+      message?: string;
+      driverError?: {
+        message?: string;
+        originalError?: { message?: string; info?: { message?: string } };
+      };
+    };
+    const message =
+      value.driverError?.originalError?.info?.message ??
+      value.driverError?.originalError?.message ??
+      value.driverError?.message ??
+      value.message;
+    if (!message) return undefined;
+    return message
+      .replace(/(password|user(?:name)?)\s*[=:]\s*[^,; ]+/gi, '$1=[REDACTED]')
+      .slice(0, 500);
   }
 }

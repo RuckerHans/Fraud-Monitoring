@@ -16,7 +16,7 @@ Filtered AS (
   SELECT
     ft.TransactionNo AS transactionNo,
     ft.CustomerCode AS customerCode,
-    ft.CustomerCode AS customerName,
+    COALESCE(NULLIF(ft.Description, ''), ft.CustomerCode) AS customerName,
     ft.GrandTotal AS amount,
     ft.LogDate AS logDate,
     ft.UserID AS userId,
@@ -39,10 +39,40 @@ Filtered AS (
 )`;
 
 export const REPORT_PAGE_SQL = `${REPORT_CTE}
-SELECT *
-FROM Filtered
-ORDER BY logDate DESC, transactionNo DESC
-OFFSET @5 ROWS FETCH NEXT @6 ROWS ONLY;`;
+, Numbered AS (
+  SELECT
+    transactionNo,
+    customerCode,
+    customerName,
+    amount,
+    logDate,
+    userId,
+    terminalNo,
+    returned,
+    voided,
+    voidRemarks,
+    pointsEarned,
+    pointsRedeemed,
+    ROW_NUMBER() OVER (ORDER BY logDate DESC, transactionNo DESC) AS rowNumber
+  FROM Filtered
+)
+SELECT
+  transactionNo,
+  customerCode,
+  customerName,
+  amount,
+  logDate,
+  userId,
+  terminalNo,
+  returned,
+  voided,
+  voidRemarks,
+  pointsEarned,
+  pointsRedeemed
+FROM Numbered
+WHERE rowNumber > @5
+  AND rowNumber <= (@5 + @6)
+ORDER BY rowNumber;`;
 
 export const REPORT_COUNT_SQL = `${REPORT_CTE}
 SELECT COUNT_BIG(1) AS total FROM Filtered;`;

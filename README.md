@@ -71,6 +71,8 @@ branchIds, from, to, page, pageSize, returned?, voided?, points?
 
 Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDate < DATEADD(day, 1, to)` before exception filters to make existing date indexes useful. Date ranges are capped at 366 days and page size at 100.
 
+Pagination uses `ROW_NUMBER()` rather than `OFFSET/FETCH` for compatibility with older branch SQL Server versions.
+
 ## Security and operational behavior
 
 - Every branch query is read-only and uses fixed SQL with driver-bound parameters.
@@ -89,7 +91,7 @@ Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDa
 
 Two details cannot be finalized without the live contracts:
 
-1. `CustomerName` currently falls back to `FinishedTransaction.CustomerCode`. Once the customer master table and join key are confirmed, update the fixed query in `backend/src/reports/report.sql.ts`.
+1. `CustomerName` uses `FinishedTransaction.Description` and falls back to `CustomerCode`. Confirm whether a dedicated customer master should replace this source.
 2. Positive `FinishedSales.Points` with `PointsPosted = 1` is treated as earned; negative points are treated as redeemed. Confirm the loyalty ledger or transaction-type field before relying on this classification.
 
 `DATACENTER_ACTIVE_VALUE` defaults to `0`, matching the supplied directory record where `isactive: 0` and `branchconnected: 1` represents an online branch.
