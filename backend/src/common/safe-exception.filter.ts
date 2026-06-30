@@ -15,7 +15,9 @@ export class SafeExceptionFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     let mapped: HttpException;
     if (exception instanceof BranchUnreachableError) {
-      mapped = new RequestTimeoutException('The selected branch is unreachable or timed out.');
+      mapped = new RequestTimeoutException(
+        exception.message || 'The selected branch is unreachable or timed out.',
+      );
     } else if (exception instanceof UpstreamUnavailableError) {
       mapped = new BadGatewayException('A required upstream service is unavailable.');
     } else if (exception instanceof HttpException) {

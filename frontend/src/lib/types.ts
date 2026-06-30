@@ -34,6 +34,7 @@ export interface ReportResponse {
   data: Transaction[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };
   assumptions: string[];
+  warnings: string[];
 }
 
 export interface ReportParams {

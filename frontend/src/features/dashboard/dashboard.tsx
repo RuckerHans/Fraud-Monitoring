@@ -24,6 +24,17 @@ function authToken(result: Record<string, unknown>): string | undefined {
   );
 }
 
+function requestErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const value = error as { status?: number | string; data?: unknown };
+  const data = value.data as { message?: string | string[] } | undefined;
+  const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
+  if (message) return message;
+  if (value.status === 401) return 'Your session expired. Sign in again.';
+  if (value.status === 408) return 'The selected branches could not be reached.';
+  return 'The report request failed. Check branch connectivity and try again.';
+}
+
 export function Dashboard() {
   const defaultDate = yesterday();
   const [draft, setDraft] = useState({
@@ -36,7 +47,7 @@ export function Dashboard() {
   });
   const [applied, setApplied] = useState<ReportParams | null>(null);
   const [branchModalOpen, setBranchModalOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState('');
@@ -75,7 +86,7 @@ export function Dashboard() {
     const expire = () => {
       window.localStorage.removeItem('fraud-monitoring-token');
       setSessionExpired(true);
-      setLoginOpen(false);
+      setAccountOpen(false);
       void recheckSession();
     };
     let timer: number | undefined;
@@ -163,9 +174,32 @@ export function Dashboard() {
         </div>
         <div className="top-actions">
           <span className="live-dot">Systems live</span>
-          <button className="avatar" onClick={() => setLoginOpen(true)} aria-label="Authentication">
+          <button
+            className="avatar"
+            onClick={() => setAccountOpen((open) => !open)}
+            aria-label="Open account menu"
+            aria-expanded={accountOpen}
+          >
             {currentUser?.username?.slice(0, 2).toUpperCase() ?? 'AU'}
           </button>
+          {accountOpen && currentUser && (
+            <div className="account-menu">
+              <span>Signed in as</span>
+              <strong>{currentUser.username}</strong>
+              <small>
+                Session expires {new Date(currentUser.expiresAt * 1_000).toLocaleString('en-PH')}
+              </small>
+              <button
+                type="button"
+                onClick={() => {
+                  window.localStorage.removeItem('fraud-monitoring-token');
+                  window.location.reload();
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -261,12 +295,14 @@ export function Dashboard() {
           </div>
         </form>
 
-        {(branchError || reportError || notice) && (
+        {(branchError || reportError || notice || report?.warnings.length) && (
           <div className="alert">
             {notice ||
               (branchError
                 ? 'The branch directory is unavailable.'
-                : 'The report could not be loaded. Sign in or check branch connectivity.')}
+                : reportError
+                  ? requestErrorMessage(reportError)
+                  : `${report?.warnings.length} branch${report?.warnings.length === 1 ? '' : 'es'} could not be queried: ${report?.warnings.join(' ')}`)}
           </div>
         )}
 
@@ -361,13 +397,11 @@ export function Dashboard() {
       {checkingSession && !sessionExpired ? (
         <SessionCheck />
       ) : (
-        (!signedIn || loginOpen) && (
+        !signedIn && (
           <LoginDialog
-            close={signedIn ? () => setLoginOpen(false) : undefined}
             message={sessionExpired ? 'Your session expired. Sign in again to continue.' : undefined}
             authenticated={() => {
               setSessionExpired(false);
-              setLoginOpen(false);
             }}
           />
         )

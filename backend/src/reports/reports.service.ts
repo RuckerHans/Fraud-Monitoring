@@ -6,6 +6,7 @@ import { ExportQueryDto, ReportQueryDto } from './report-query.dto';
 import { REPORT_COUNT_SQL, REPORT_EXPORT_SQL, REPORT_PAGE_SQL } from './report.sql';
 import { FraudReportRow, PagedReport } from './report.types';
 import { DatacenterBranch } from '../branches/branch.types';
+import { BranchUnreachableError } from '../common/errors';
 
 const assumptions = [
   'CustomerName currently falls back to CustomerCode until the branch customer table is confirmed.',
@@ -28,25 +29,43 @@ export class ReportsService {
     const branches = await this.branches.resolveManyForConnection(branchIds);
     const params = this.params(query);
     const rows: FraudReportRow[] = [];
+    const warnings: string[] = [];
     let total = 0;
+    let successfulBranches = 0;
     const perBranchLimit = query.page * query.pageSize;
     for (const branch of branches) {
       const started = Date.now();
-      const [branchRows, countRows] = await this.connections.withConnection(
-        branch,
-        async (source) => {
-          const pageRows = await source.query(REPORT_PAGE_SQL, [
-            ...params,
-            0,
-            perBranchLimit,
-          ]);
-          const totals = await source.query(REPORT_COUNT_SQL, params);
-          return [pageRows, totals];
-        },
-      );
-      total += Number(countRows[0]?.total ?? 0);
-      rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
-      this.logQuery('branch_query', branch, query, user, started, branchRows.length);
+      try {
+        const [branchRows, countRows] = await this.connections.withConnection(
+          branch,
+          async (source) => {
+            const pageRows = await source.query(REPORT_PAGE_SQL, [
+              ...params,
+              0,
+              perBranchLimit,
+            ]);
+            const totals = await source.query(REPORT_COUNT_SQL, params);
+            return [pageRows, totals];
+          },
+        );
+        successfulBranches += 1;
+        total += Number(countRows[0]?.total ?? 0);
+        rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+        this.logQuery('branch_query', branch, query, user, started, branchRows.length);
+      } catch {
+        warnings.push(`${branch.branchlocation || branch.branchcode} could not be queried.`);
+        this.logger.warn({
+          event: 'branch_query_failed',
+          branchId: String(branch.id),
+          from: query.from,
+          to: query.to,
+          user,
+          durationMs: Date.now() - started,
+        });
+      }
+    }
+    if (successfulBranches === 0) {
+      throw new BranchUnreachableError('None of the selected branches could be queried.');
     }
     const offset = (query.page - 1) * query.pageSize;
     const pageRows = rows
@@ -61,6 +80,7 @@ export class ReportsService {
         totalPages: Math.ceil(total / query.pageSize),
       },
       assumptions,
+      warnings,
     };
   }
 
@@ -68,13 +88,29 @@ export class ReportsService {
     this.validateRange(query);
     const branches = await this.branches.resolveManyForConnection(this.branchIds(query));
     const rows: FraudReportRow[] = [];
+    let successfulBranches = 0;
     for (const branch of branches) {
       const started = Date.now();
-      const branchRows = await this.connections.withConnection(branch, (source) =>
-        source.query(REPORT_EXPORT_SQL, this.params(query)),
-      );
-      rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
-      this.logQuery('branch_export', branch, query, user, started, branchRows.length);
+      try {
+        const branchRows = await this.connections.withConnection(branch, (source) =>
+          source.query(REPORT_EXPORT_SQL, this.params(query)),
+        );
+        successfulBranches += 1;
+        rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+        this.logQuery('branch_export', branch, query, user, started, branchRows.length);
+      } catch {
+        this.logger.warn({
+          event: 'branch_export_failed',
+          branchId: String(branch.id),
+          from: query.from,
+          to: query.to,
+          user,
+          durationMs: Date.now() - started,
+        });
+      }
+    }
+    if (successfulBranches === 0) {
+      throw new BranchUnreachableError('None of the selected branches could be exported.');
     }
     return rows
       .sort((left, right) => this.compareRows(left, right))

@@ -20,4 +20,5 @@ export interface PagedReport {
   data: FraudReportRow[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };
   assumptions: string[];
+  warnings: string[];
 }
