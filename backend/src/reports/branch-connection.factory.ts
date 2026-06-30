@@ -54,13 +54,24 @@ export class BranchConnectionFactory {
   }
 
   private errorCode(error: any): string {
-    return String(
+    const code = String(
       error?.code ??
       error?.originalError?.code ??
       error?.driverError?.code ??
       error?.driverError?.originalError?.code ??
       '',
     ).toUpperCase();
+    if (code) return code;
+    const message = String(
+      error?.message ??
+      error?.originalError?.message ??
+      error?.driverError?.message ??
+      '',
+    ).toLowerCase();
+    if (message.includes('timeout') || message.includes('timed out')) return 'ETIMEOUT';
+    if (message.includes('login failed')) return 'ELOGIN';
+    if (message.includes('failed to connect') || message.includes('socket')) return 'ESOCKET';
+    return '';
   }
 
   private connectionMessage(code: string): string {
