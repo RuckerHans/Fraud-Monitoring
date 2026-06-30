@@ -34,6 +34,15 @@ describe('LocalAuthProvider', () => {
     );
   });
 
+  it('reports authentication database timeouts safely', async () => {
+    findUser.mockRejectedValue(Object.assign(new Error('connect timed out'), {
+      code: 'ETIMEDOUT',
+    }));
+    await expect(provider.login('auditor', 'password')).rejects.toMatchObject({
+      message: 'The authentication database connection timed out.',
+    });
+  });
+
   it('rejects tokens signed with a different secret', async () => {
     const token = sign({ username: 'attacker' }, 'another-secret', {
       algorithm: 'HS256',

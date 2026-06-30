@@ -24,6 +24,7 @@ export class AuthDatabaseService implements OnApplicationShutdown {
       user: config.getOrThrow<string>('AUTH_MYSQL_USER'),
       password: config.getOrThrow<string>('AUTH_MYSQL_PASSWORD'),
       database: config.getOrThrow<string>('AUTH_MYSQL_DATABASE'),
+      connectTimeout: config.get<number>('AUTH_MYSQL_CONNECT_TIMEOUT_MS', 5_000),
       waitForConnections: true,
       connectionLimit: 5,
       queueLimit: 20,

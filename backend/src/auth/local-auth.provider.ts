@@ -36,7 +36,7 @@ export class LocalAuthProvider implements AuthProvider {
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) throw error;
-      throw new UpstreamUnavailableError('The authentication database is unavailable.');
+      throw new UpstreamUnavailableError(this.databaseErrorMessage(error));
     }
   }
 
@@ -103,5 +103,20 @@ export class LocalAuthProvider implements AuthProvider {
     } catch {
       return value;
     }
+  }
+
+  private databaseErrorMessage(error: unknown): string {
+    const code = error && typeof error === 'object' && 'code' in error
+      ? String(error.code).toUpperCase()
+      : '';
+    if (code === 'ETIMEDOUT') return 'The authentication database connection timed out.';
+    if (code === 'ECONNREFUSED') return 'The authentication database refused the connection.';
+    if (code === 'ER_ACCESS_DENIED_ERROR') {
+      return 'The authentication database rejected its configured login.';
+    }
+    if (code === 'ER_NO_SUCH_TABLE') {
+      return 'The monitoring_auth table was not found in the authentication database.';
+    }
+    return 'The authentication database is unavailable.';
   }
 }
