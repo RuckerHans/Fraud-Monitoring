@@ -11,7 +11,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.use(helmet());
   app.enableCors({
-    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000',
+    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:7070',
     credentials: true,
   });
   app.setGlobalPrefix('api');
@@ -27,7 +27,7 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
-  await app.listen(Number(process.env.PORT ?? 3001), '0.0.0.0');
+  await app.listen(Number(process.env.PORT ?? 6060), '0.0.0.0');
 }
 
 void bootstrap();

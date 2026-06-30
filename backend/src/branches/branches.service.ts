@@ -42,6 +42,7 @@ export class BranchesService {
       const baseUrl = this.config.getOrThrow<string>('DATACENTER_API_URL');
       const { data } = await firstValueFrom(
         this.http.get<DatacenterBranch[]>(`${baseUrl}/branch/list-datacenter`, {
+          headers: { 'api-key': this.config.getOrThrow<string>('API_KEY') },
           timeout: 5_000,
         }),
       );

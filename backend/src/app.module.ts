@@ -7,16 +7,19 @@ import { AuthModule } from './auth/auth.module';
 import { BranchesModule } from './branches/branches.module';
 import { HealthController } from './health.controller';
 import { ReportsModule } from './reports/reports.module';
+import { validateEnvironment } from './config/environment';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     LoggerModule.forRoot({
       pinoHttp: {
         redact: {
           paths: [
             'req.headers.authorization',
             'req.headers.cookie',
+            'req.headers.api-key',
+            'req.headers.x-api-key',
             'req.body.password',
             '*.branchserverpassword',
             '*.branchserverusername',

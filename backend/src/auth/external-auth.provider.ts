@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { JwtPayload, verify } from 'jsonwebtoken';
 import { UpstreamUnavailableError } from '../common/errors';
 import { AuthenticatedUser, AuthLoginResult, AuthProvider } from './auth.types';
 
@@ -16,7 +17,10 @@ export class ExternalAuthProvider implements AuthProvider {
     try {
       const baseUrl = this.config.getOrThrow<string>('AUTH_SERVICE_URL');
       const response = await firstValueFrom(
-        this.http.post(`${baseUrl}/auth/login`, { username, password }, { timeout: 5_000 }),
+        this.http.post(`${baseUrl}/auth/login`, { username, password }, {
+          headers: { 'api-key': this.config.getOrThrow<string>('API_KEY') },
+          timeout: 5_000,
+        }),
       );
       return {
         body: response.data,
@@ -31,33 +35,72 @@ export class ExternalAuthProvider implements AuthProvider {
   }
 
   async validate(authorization?: string, cookie?: string): Promise<AuthenticatedUser> {
-    if (!authorization && !cookie) throw new UnauthorizedException('Authentication required.');
-    const validatePath = this.config.get<string>('AUTH_VALIDATE_PATH');
-
-    // Temporary adapter until the upstream token/session response contract is confirmed.
-    if (!validatePath) {
-      return { username: 'external-user', roles: [], raw: undefined };
-    }
+    const token = this.extractToken(authorization, cookie);
+    if (!token) throw new UnauthorizedException('Authentication required.');
     try {
-      const baseUrl = this.config.getOrThrow<string>('AUTH_SERVICE_URL');
-      const response = await firstValueFrom(
-        this.http.get(`${baseUrl}${validatePath}`, {
-          headers: { authorization, cookie },
-          timeout: 5_000,
-        }),
-      );
-      const data = response.data as Record<string, any>;
-      return {
-        id: data.id ? String(data.id) : undefined,
-        username: String(data.username ?? data.user?.username ?? 'external-user'),
-        roles: Array.isArray(data.roles) ? data.roles.map(String) : [],
-        raw: data,
-      };
-    } catch (error: any) {
-      if ([401, 403].includes(error?.response?.status)) {
-        throw new UnauthorizedException('Session is invalid or expired.');
+      const issuer = this.config.get<string>('JWT_ISSUER') || undefined;
+      const audience = this.config.get<string>('JWT_AUDIENCE') || undefined;
+      const payload = verify(token, this.config.getOrThrow<string>('JWT_SECRET'), {
+        algorithms: ['HS256'],
+        issuer,
+        audience,
+      });
+      if (typeof payload === 'string') {
+        throw new UnauthorizedException('Invalid authentication token.');
       }
-      throw new UpstreamUnavailableError('Auth service unavailable');
+      const data = payload as JwtPayload & Record<string, unknown>;
+      if (typeof data.exp !== 'number') {
+        throw new UnauthorizedException('Authentication token must include an expiry.');
+      }
+      const user = this.asRecord(data.user);
+      const rolesValue = data.roles ?? data.role ?? data.authorities ?? user?.roles;
+      return {
+        id: this.optionalString(data.sub ?? data.id ?? user?.id),
+        username: this.optionalString(
+          data.username ?? data.preferred_username ?? user?.username ?? data.name,
+        ) ?? 'external-user',
+        roles: Array.isArray(rolesValue)
+          ? rolesValue.map(String)
+          : rolesValue
+            ? [String(rolesValue)]
+            : [],
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('Session is invalid or expired.');
+    }
+  }
+
+  private extractToken(authorization?: string, cookie?: string): string | undefined {
+    const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    if (bearer) return bearer;
+    if (!cookie) return undefined;
+    const cookies = Object.fromEntries(
+      cookie.split(';').map((part) => {
+        const separator = part.indexOf('=');
+        if (separator < 0) return [part.trim(), ''];
+        return [
+          part.slice(0, separator).trim(),
+          this.decodeCookie(part.slice(separator + 1).trim()),
+        ];
+      }),
+    );
+    return cookies.access_token ?? cookies.accessToken ?? cookies.token;
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+  }
+
+  private optionalString(value: unknown): string | undefined {
+    return value === undefined || value === null || value === '' ? undefined : String(value);
+  }
+
+  private decodeCookie(value: string): string {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
     }
   }
 }

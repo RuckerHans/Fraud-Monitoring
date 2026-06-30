@@ -8,9 +8,9 @@ services:
     env_file:
       - .env
     environment:
-      PORT: 3001
+      PORT: 6060
     ports:
-      - "3001:3001"
+      - "6060:6060"
     volumes:
       - ./backend:/workspace/backend
       - /workspace/node_modules
@@ -23,9 +23,9 @@ services:
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:6060/api}
     ports:
-      - "3000:3000"
+      - "7070:7070"
     volumes:
       - ./frontend:/workspace/frontend
       - /workspace/node_modules

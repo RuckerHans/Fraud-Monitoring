@@ -39,11 +39,11 @@ npm run dev --workspace frontend
 
 Open:
 
-- Dashboard: `http://localhost:3000`
-- Swagger: `http://localhost:3001/docs`
-- Health: `http://localhost:3001/api/health`
+- Dashboard: `http://localhost:7070`
+- Swagger: `http://localhost:6060/docs`
+- Health: `http://localhost:6060/api/health`
 
-The `.env` file contains only service endpoints and behavior settings. Never add branch DB credentials to it.
+The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
 
 Development containers:
 
@@ -72,6 +72,8 @@ Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDa
 ## Security and operational behavior
 
 - Every branch query is read-only and uses fixed SQL with driver-bound parameters.
+- The backend sends `API_KEY` as the `api-key` header to the branch directory and auth services. It is never exposed through `NEXT_PUBLIC_*` or browser requests.
+- Guarded endpoints verify JWT signatures with `JWT_SECRET`, allow only HS256, and require a valid `exp` claim. Optional `JWT_ISSUER` and `JWT_AUDIENCE` values tighten claim validation when supplied.
 - Use a least-privilege MSSQL login whose only permissions are `SELECT` on required objects. Application code cannot compensate for an over-privileged DB account.
 - Connection and query timeouts fail fast. Errors returned to the browser never include hostnames, usernames, passwords, or driver details.
 - Pino logs redact authorization, cookies, passwords, and branch credential field names.
@@ -89,7 +91,7 @@ Two details cannot be finalized without the live contracts:
 
 `DATACENTER_ACTIVE_VALUE` defaults to `1`. The supplied example contains `isactive: 0` alongside `branchconnected: 1`, so confirm whether `0` actually means active in this API and set the environment value accordingly.
 
-The auth implementation is deliberately behind `AuthProvider`. Until the login/token response is confirmed, the frontend recognizes common token names (`access_token`, `accessToken`, `token`) and the backend accepts the presence of a bearer token/cookie. Set `AUTH_VALIDATE_PATH` (for example `/auth/validate`) when the upstream validation endpoint is known; the backend will then validate on every guarded request. This provisional presence-only mode is not suitable for production.
+The auth implementation remains behind `AuthProvider`. The frontend recognizes common login response token names (`access_token`, `accessToken`, `token`), while the backend cryptographically verifies bearer tokens or `access_token`/`accessToken`/`token` cookies on every guarded request.
 
 The branch port defaults to `1433`; `branchserverport` is honored if the directory returns it. V1 is intentionally single-branch only.
 

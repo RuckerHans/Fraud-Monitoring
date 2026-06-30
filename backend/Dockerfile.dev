@@ -5,5 +5,5 @@ COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN npm install
 COPY backend backend
-EXPOSE 3001
+EXPOSE 6060
 CMD ["npm", "run", "start:dev", "--workspace", "backend"]
