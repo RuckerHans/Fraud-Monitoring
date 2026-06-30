@@ -46,4 +46,5 @@ export interface ReportParams {
   returned?: boolean;
   voided?: boolean;
   points?: 'earned' | 'redeemed' | 'any';
+  exception?: 'returnedOrVoided' | 'returned' | 'voided' | 'all';
 }

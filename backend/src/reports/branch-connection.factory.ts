@@ -47,10 +47,10 @@ export class BranchConnectionFactory {
       options: { encrypt: false, trustServerCertificate: true },
       extra: {
         connectionTimeout: Number(
-          this.config.get<string | number>('MSSQL_CONNECT_TIMEOUT_MS', 5_000),
+          this.config.get<string | number>('MSSQL_CONNECT_TIMEOUT_MS', 30_000),
         ),
         requestTimeout: Number(
-          this.config.get<string | number>('MSSQL_REQUEST_TIMEOUT_MS', 15_000),
+          this.config.get<string | number>('MSSQL_REQUEST_TIMEOUT_MS', 120_000),
         ),
         pool: { max: 2, min: 0, idleTimeoutMillis: 10_000 },
       },

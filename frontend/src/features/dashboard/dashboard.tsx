@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { yesterday } from '@/lib/dates';
 import type { Branch, ReportParams } from '@/lib/types';
 import {
@@ -41,8 +42,7 @@ export function Dashboard() {
     branchIds: [] as string[],
     from: defaultDate,
     to: defaultDate,
-    returned: '',
-    voided: '',
+    exception: 'returnedOrVoided' as ReportParams['exception'],
     points: '',
   });
   const [applied, setApplied] = useState<ReportParams | null>(null);
@@ -122,9 +122,8 @@ export function Dashboard() {
       to: draft.to,
       page: 1,
       pageSize: 50,
-      returned: draft.returned === '' ? undefined : draft.returned === 'true',
-      voided: draft.voided === '' ? undefined : draft.voided === 'true',
       points: draft.points ? (draft.points as ReportParams['points']) : undefined,
+      exception: draft.exception,
     });
   }
 
@@ -166,13 +165,20 @@ export function Dashboard() {
     <main>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">FM</span>
+          <Image src="/icon.svg" width={38} height={38} alt="" priority />
           <div>
-            <strong>Fraud Monitoring</strong>
-            <span>Retail operations</span>
+            <strong>Transaction review</strong>
+            <span>Fraud Monitoring</span>
           </div>
         </div>
         <div className="top-actions">
+          <button
+            className="header-export"
+            onClick={exportReport}
+            disabled={!report || exporting}
+          >
+            {exporting ? 'Preparing…' : 'Export .xlsx'}
+          </button>
           <span className="live-dot">Systems live</span>
           <button
             className="avatar"
@@ -204,17 +210,6 @@ export function Dashboard() {
       </header>
 
       <section className="shell">
-        <div className="hero">
-          <div>
-            <p className="eyebrow">Exception intelligence</p>
-            <h1>Transaction review</h1>
-            <p>Trace returns, voids, and loyalty activity across selected branches.</p>
-          </div>
-          <button className="secondary" onClick={exportReport} disabled={!report || exporting}>
-            {exporting ? 'Preparing…' : 'Export .xlsx'}
-          </button>
-        </div>
-
         <form className="filter-card" onSubmit={applyFilters}>
           <div className="branch-summary">
             <div className="branch-summary-icon" aria-hidden="true">▦</div>
@@ -258,41 +253,32 @@ export function Dashboard() {
           <label>
             <span>Exception</span>
             <select
-              value={draft.voided}
-              onChange={(event) => setDraft({ ...draft, voided: event.target.value })}
+              value={draft.exception}
+              onChange={(event) => setDraft({
+                ...draft,
+                exception: event.target.value as ReportParams['exception'],
+              })}
             >
-              <option value="">All activity</option>
-              <option value="true">Voided only</option>
-              <option value="false">Not voided</option>
+              <option value="returnedOrVoided">Returned and voided</option>
+              <option value="returned">Returned only</option>
+              <option value="voided">Voided only</option>
+              <option value="all">All activity</option>
+            </select>
+          </label>
+          <label>
+            <span>Points</span>
+            <select
+              value={draft.points}
+              onChange={(event) => setDraft({ ...draft, points: event.target.value })}
+            >
+              <option value="">Any points activity</option>
+              <option value="earned">Earned</option>
+              <option value="redeemed">Redeemed</option>
             </select>
           </label>
           <button className="primary" type="submit" disabled={!draft.branchIds.length || isFetching}>
             {isFetching ? 'Querying…' : 'Run report'}
           </button>
-          <div className="subfilters">
-            <label>
-              <span>Returns</span>
-              <select
-                value={draft.returned}
-                onChange={(event) => setDraft({ ...draft, returned: event.target.value })}
-              >
-                <option value="">Any</option>
-                <option value="true">Returned</option>
-                <option value="false">Not returned</option>
-              </select>
-            </label>
-            <label>
-              <span>Points</span>
-              <select
-                value={draft.points}
-                onChange={(event) => setDraft({ ...draft, points: event.target.value })}
-              >
-                <option value="">Any</option>
-                <option value="earned">Earned</option>
-                <option value="redeemed">Redeemed</option>
-              </select>
-            </label>
-          </div>
         </form>
 
         {(branchError || reportError || notice || report?.warnings.length) && (

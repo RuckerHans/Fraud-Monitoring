@@ -23,5 +23,6 @@ describe('ReportQueryDto', () => {
     });
     expect(await validate(dto)).toHaveLength(0);
     expect(dto.returned).toBe(false);
+    expect(dto.exception).toBe('returnedOrVoided');
   });
 });

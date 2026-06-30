@@ -70,6 +70,15 @@ export class ReportQueryDto {
   @IsOptional()
   @IsIn(['earned', 'redeemed', 'any'])
   points?: 'earned' | 'redeemed' | 'any';
+
+  @ApiPropertyOptional({
+    enum: ['returnedOrVoided', 'returned', 'voided', 'all'],
+    default: 'returnedOrVoided',
+  })
+  @IsOptional()
+  @IsIn(['returnedOrVoided', 'returned', 'voided', 'all'])
+  exception: 'returnedOrVoided' | 'returned' | 'voided' | 'all' =
+    'returnedOrVoided';
 }
 
 export class ExportQueryDto extends ReportQueryDto {

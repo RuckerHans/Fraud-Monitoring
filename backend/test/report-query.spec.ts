@@ -5,7 +5,8 @@ describe('fraud report SQL', () => {
     expect(REPORT_PAGE_SQL).toContain('fs.LogDate >= @0');
     expect(REPORT_PAGE_SQL).toContain('ft.LogDate >= @0');
     expect(REPORT_PAGE_SQL).toContain('ROW_NUMBER() OVER');
-    expect(REPORT_PAGE_SQL).toContain('rowNumber <= (@5 + @6)');
+    expect(REPORT_PAGE_SQL).toContain("OR (@5 = 'returnedOrVoided'");
+    expect(REPORT_PAGE_SQL).toContain('rowNumber <= (@6 + @7)');
     expect(REPORT_PAGE_SQL).not.toContain('OFFSET');
     expect(REPORT_COUNT_SQL).toContain('COUNT_BIG(1)');
     expect(REPORT_PAGE_SQL).not.toContain('${');

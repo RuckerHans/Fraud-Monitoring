@@ -128,6 +128,7 @@ export class ReportsService {
       query.returned === undefined ? null : Number(query.returned),
       query.voided === undefined ? null : Number(query.voided),
       query.points ?? null,
+      query.exception ?? 'returnedOrVoided',
     ];
   }
 

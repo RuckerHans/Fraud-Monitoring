@@ -36,6 +36,19 @@ Filtered AS (
       OR (@4 = 'earned' AND ISNULL(ss.PointsEarned, 0) > 0)
       OR (@4 = 'redeemed' AND ISNULL(ss.PointsRedeemed, 0) > 0)
     )
+    AND (
+      @5 IS NULL OR @5 = 'all'
+      OR (@5 = 'returnedOrVoided' AND (
+        ISNULL(ss.Returned, 0) = 1
+        OR ft.Voided = 1
+        OR ISNULL(ss.SaleVoided, 0) = 1
+      ))
+      OR (@5 = 'returned' AND ISNULL(ss.Returned, 0) = 1)
+      OR (@5 = 'voided' AND (
+        ft.Voided = 1
+        OR ISNULL(ss.SaleVoided, 0) = 1
+      ))
+    )
 )`;
 
 export const REPORT_PAGE_SQL = `${REPORT_CTE}
@@ -70,8 +83,8 @@ SELECT
   pointsEarned,
   pointsRedeemed
 FROM Numbered
-WHERE rowNumber > @5
-  AND rowNumber <= (@5 + @6)
+WHERE rowNumber > @6
+  AND rowNumber <= (@6 + @7)
 ORDER BY rowNumber;`;
 
 export const REPORT_COUNT_SQL = `${REPORT_CTE}
