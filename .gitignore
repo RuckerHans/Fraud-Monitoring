@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+.eslintcache
+backend/tmp/
+frontend/playwright-report/
+frontend/test-results/
+
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

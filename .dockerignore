@@ -1,0 +1,31 @@
+# Never send local dependencies or generated output to Docker.
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/.eslintcache
+
+# Local configuration and secrets.
+.env
+.env.*
+!.env.example
+*.log
+
+# Repository and workstation metadata.
+.git
+.github
+.agents
+.codex
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Files not needed to run development containers.
+**/test
+**/*.spec.ts
+**/playwright-report
+**/test-results
+README.md

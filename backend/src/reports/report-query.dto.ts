@@ -1,0 +1,76 @@
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+const toBoolean = ({ value }: { value: unknown }) => {
+  if (value === undefined) return undefined;
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return value;
+};
+
+export class ReportQueryDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(64)
+  branchId!: string;
+
+  @ApiProperty({ format: 'date' })
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  from!: string;
+
+  @ApiProperty({ format: 'date' })
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  to!: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ default: 50, maximum: 100 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize = 50;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  returned?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  voided?: boolean;
+
+  @ApiPropertyOptional({ enum: ['earned', 'redeemed', 'any'] })
+  @IsOptional()
+  @IsIn(['earned', 'redeemed', 'any'])
+  points?: 'earned' | 'redeemed' | 'any';
+}
+
+export class ExportQueryDto extends ReportQueryDto {
+  @IsOptional()
+  page = 1;
+
+  @IsOptional()
+  pageSize = 100;
+}
