@@ -69,7 +69,7 @@ branchIds, from, to, page, pageSize, exception?, returned?, voided?, points?
 
 Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDate < DATEADD(day, 1, to)` before exception filters to make existing date indexes useful. Date ranges are capped at 366 days and page size at 100.
 
-The default `exception=returnedOrVoided` includes transactions with either a return or void flag. Branch connections allow 30 seconds to connect and report queries allow 20 minutes by default for slower local servers.
+The default `exception=returnedOrVoided` includes transactions with either a return or void flag. Branch connections allow 10 minutes to connect and report queries allow 20 minutes by default for slower local servers.
 
 Pagination uses `ROW_NUMBER()` rather than `OFFSET/FETCH` for compatibility with older branch SQL Server versions.
 
