@@ -25,11 +25,14 @@ describe('ExternalAuthProvider', () => {
       secret,
       { algorithm: 'HS256', expiresIn: '5m', subject: '42' },
     );
-    await expect(provider.validate(`Bearer ${token}`)).resolves.toEqual({
-      id: '42',
-      username: 'auditor',
-      roles: ['fraud-reviewer'],
-    });
+    await expect(provider.validate(`Bearer ${token}`)).resolves.toEqual(
+      expect.objectContaining({
+        id: '42',
+        username: 'auditor',
+        roles: ['fraud-reviewer'],
+        expiresAt: expect.any(Number),
+      }),
+    );
   });
 
   it('rejects a token signed with a different secret', async () => {

@@ -64,6 +64,7 @@ export class ExternalAuthProvider implements AuthProvider {
           : rolesValue
             ? [String(rolesValue)]
             : [],
+        expiresAt: data.exp,
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) throw error;

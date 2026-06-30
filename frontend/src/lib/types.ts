@@ -9,6 +9,7 @@ export interface AuthenticatedUser {
   id?: string;
   username: string;
   roles: string[];
+  expiresAt: number;
 }
 
 export interface Transaction {
