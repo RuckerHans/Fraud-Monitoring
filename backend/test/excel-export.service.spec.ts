@@ -5,6 +5,9 @@ describe('ExcelExportService', () => {
   it('creates a real XLSX and neutralizes spreadsheet formulas', async () => {
     const buffer = await new ExcelExportService().build([
       {
+        branchId: '31',
+        branchCode: 'BGB',
+        branchLocation: 'BAGUMBONG',
         transactionNo: '=1+1',
         customerCode: 'C1',
         customerName: 'Customer',
@@ -23,7 +26,7 @@ describe('ExcelExportService', () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as any);
     const sheet = workbook.getWorksheet('Transactions');
-    expect(sheet?.getCell('A2').value).toBe("'=1+1");
-    expect(sheet?.autoFilter).toBe('A1:L1');
+    expect(sheet?.getCell('D2').value).toBe("'=1+1");
+    expect(sheet?.autoFilter).toBe('A1:O1');
   });
 });

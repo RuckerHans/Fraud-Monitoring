@@ -26,7 +26,7 @@ function authToken(result: Record<string, unknown>): string | undefined {
 export function Dashboard() {
   const defaultDate = yesterday();
   const [draft, setDraft] = useState({
-    branchId: '',
+    branchIds: [] as string[],
     from: defaultDate,
     to: defaultDate,
     returned: '',
@@ -46,7 +46,10 @@ export function Dashboard() {
     isFetching,
     error: reportError,
   } = useGetTransactionsQuery(applied!, { skip: !applied || !signedIn });
-  const selected = branches.find((branch) => branch.id === draft.branchId);
+  const onlineBranches = branches.filter((branch) => branch.online);
+  const selectedBranches = branches.filter((branch) => draft.branchIds.includes(branch.id));
+  const allOnlineSelected =
+    onlineBranches.length > 0 && onlineBranches.every((branch) => draft.branchIds.includes(branch.id));
 
   const stats = useMemo(() => {
     const rows = report?.data ?? [];
@@ -59,9 +62,9 @@ export function Dashboard() {
 
   function applyFilters(event: FormEvent) {
     event.preventDefault();
-    if (!selected?.online) return;
+    if (!draft.branchIds.length) return;
     setApplied({
-      branchId: draft.branchId,
+      branchIds: draft.branchIds,
       from: draft.from,
       to: draft.to,
       page: 1,
@@ -80,7 +83,7 @@ export function Dashboard() {
       const params = new URLSearchParams();
       Object.entries(applied).forEach(([key, value]) => {
         if (value !== undefined && !['page', 'pageSize'].includes(key)) {
-          params.set(key, String(value));
+          params.set(key, Array.isArray(value) ? value.join(',') : String(value));
         }
       });
       const token = window.localStorage.getItem('fraud-monitoring-token');
@@ -106,6 +109,22 @@ export function Dashboard() {
     if (applied) setApplied({ ...applied, page });
   }
 
+  function toggleBranch(branchId: string) {
+    setDraft((current) => ({
+      ...current,
+      branchIds: current.branchIds.includes(branchId)
+        ? current.branchIds.filter((id) => id !== branchId)
+        : [...current.branchIds, branchId],
+    }));
+  }
+
+  function toggleAllOnline() {
+    setDraft((current) => ({
+      ...current,
+      branchIds: allOnlineSelected ? [] : onlineBranches.map((branch) => branch.id),
+    }));
+  }
+
   return (
     <main>
       <header className="topbar">
@@ -129,7 +148,7 @@ export function Dashboard() {
           <div>
             <p className="eyebrow">Exception intelligence</p>
             <h1>Transaction review</h1>
-            <p>Trace returns, voids, and loyalty activity—one branch at a time.</p>
+            <p>Trace returns, voids, and loyalty activity across selected branches.</p>
           </div>
           <button className="secondary" onClick={exportReport} disabled={!report || exporting}>
             {exporting ? 'Preparing…' : 'Export .xlsx'}
@@ -137,22 +156,35 @@ export function Dashboard() {
         </div>
 
         <form className="filter-card" onSubmit={applyFilters}>
-          <label className="branch-field">
-            <span>Branch</span>
-            <select
-              value={draft.branchId}
-              onChange={(event) => setDraft({ ...draft, branchId: event.target.value })}
-              disabled={loadingBranches}
-              required
-            >
-              <option value="">{loadingBranches ? 'Loading branches…' : 'Select a branch'}</option>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id} disabled={!branch.online}>
-                  {branch.code} — {branch.name} {branch.online ? '' : '(offline)'}
-                </option>
+          <fieldset className="branch-field" disabled={loadingBranches}>
+            <div className="branch-picker-heading">
+              <legend>Branches</legend>
+              <label className="select-all">
+                <input
+                  type="checkbox"
+                  checked={allOnlineSelected}
+                  onChange={toggleAllOnline}
+                />
+                <span>Select all online ({onlineBranches.length})</span>
+              </label>
+            </div>
+            <div className="branch-options">
+              {loadingBranches ? (
+                <span className="branch-loading">Loading branches…</span>
+              ) : branches.map((branch) => (
+                <label key={branch.id} className={branch.online ? '' : 'offline'}>
+                  <input
+                    type="checkbox"
+                    checked={draft.branchIds.includes(branch.id)}
+                    onChange={() => toggleBranch(branch.id)}
+                    disabled={!branch.online}
+                  />
+                  <span>{branch.location} <small>{branch.code}</small></span>
+                  {!branch.online && <em>Offline</em>}
+                </label>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
           <label>
             <span>From</span>
             <input
@@ -182,7 +214,7 @@ export function Dashboard() {
               <option value="false">Not voided</option>
             </select>
           </label>
-          <button className="primary" type="submit" disabled={!selected?.online || isFetching}>
+          <button className="primary" type="submit" disabled={!draft.branchIds.length || isFetching}>
             {isFetching ? 'Querying…' : 'Run report'}
           </button>
           <div className="subfilters">
@@ -243,7 +275,11 @@ export function Dashboard() {
           <div className="table-heading">
             <div>
               <h2>Transactions</h2>
-              <p>{selected ? `${selected.code} · ${draft.from} to ${draft.to}` : 'Choose a branch to begin'}</p>
+              <p>
+                {selectedBranches.length
+                  ? `${selectedBranches.length} branch${selectedBranches.length > 1 ? 'es' : ''} · ${draft.from} to ${draft.to}`
+                  : 'Choose one or more branches to begin'}
+              </p>
             </div>
             {isFetching && <span className="querying">Reading branch…</span>}
           </div>
@@ -251,15 +287,16 @@ export function Dashboard() {
             <table>
               <thead>
                 <tr>
-                  <th>Transaction</th><th>Customer</th><th>Amount</th><th>Date & time</th>
+                  <th>Branch</th><th>Transaction</th><th>Customer</th><th>Amount</th><th>Date & time</th>
                   <th>Cashier / terminal</th><th>Status</th><th>Points</th>
                 </tr>
               </thead>
               <tbody>
                 {!report?.data.length ? (
-                  <tr><td colSpan={7} className="empty">No results to display.</td></tr>
+                  <tr><td colSpan={8} className="empty">No results to display.</td></tr>
                 ) : report.data.map((row) => (
-                  <tr key={row.transactionNo}>
+                  <tr key={`${row.branchId}-${row.transactionNo}`}>
+                    <td><strong>{row.branchLocation}</strong> <span className="muted">{row.branchCode}</span></td>
                     <td className="mono">{row.transactionNo}</td>
                     <td>{row.customerName || row.customerCode || 'Walk-in'}</td>
                     <td className="amount">{money.format(row.amount)}</td>

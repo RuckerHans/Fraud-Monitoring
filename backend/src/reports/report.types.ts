@@ -1,4 +1,7 @@
 export interface FraudReportRow {
+  branchId: string;
+  branchCode: string;
+  branchLocation: string;
   transactionNo: string;
   customerCode: string | null;
   customerName: string | null;

@@ -7,6 +7,7 @@ describe('BranchConnectionFactory', () => {
     id: '31',
     branchcode: 'BGB',
     branchname: 'Test',
+    branchlocation: 'BAGUMBONG',
     branchservername: '10.0.0.1',
     branchserverdatabasename: 'pos',
     branchserverusername: 'reader',

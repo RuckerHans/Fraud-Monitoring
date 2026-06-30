@@ -19,7 +19,12 @@ export class BranchesService {
       return this.publicCache.branches;
     }
     const records = await this.fetchRecords();
-    const branches = records.map((branch) => this.toPublic(branch));
+    const branches = records
+      .map((branch) => this.toPublic(branch))
+      .sort((left, right) =>
+        left.location.localeCompare(right.location, undefined, { sensitivity: 'base' }) ||
+        left.code.localeCompare(right.code),
+      );
     this.publicCache = {
       branches,
       expiresAt: Date.now() + this.config.get<number>('BRANCH_CACHE_TTL_MS', 120_000),
@@ -29,12 +34,20 @@ export class BranchesService {
 
   // Credentials are deliberately fetched fresh and never enter the public-list cache.
   async resolveForConnection(branchId: string): Promise<DatacenterBranch> {
-    const branch = (await this.fetchRecords()).find((item) => String(item.id) === branchId);
-    if (!branch) throw new NotFoundException('Branch not found.');
-    if (!this.isOnline(branch)) {
-      throw new NotFoundException('Branch is currently offline.');
-    }
-    return branch;
+    return (await this.resolveManyForConnection([branchId]))[0];
+  }
+
+  async resolveManyForConnection(branchIds: string[]): Promise<DatacenterBranch[]> {
+    const records = await this.fetchRecords();
+    const byId = new Map(records.map((branch) => [String(branch.id), branch]));
+    return branchIds.map((branchId) => {
+      const branch = byId.get(branchId);
+      if (!branch) throw new NotFoundException(`Branch ${branchId} was not found.`);
+      if (!this.isOnline(branch)) {
+        throw new NotFoundException(`Branch ${branchId} is currently offline.`);
+      }
+      return branch;
+    });
   }
 
   private async fetchRecords(): Promise<DatacenterBranch[]> {
@@ -57,7 +70,7 @@ export class BranchesService {
     return {
       id: String(branch.id),
       code: branch.branchcode,
-      name: branch.branchname,
+      location: branch.branchlocation || branch.branchcode,
       online: this.isOnline(branch),
     };
   }

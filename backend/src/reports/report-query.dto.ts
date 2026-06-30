@@ -21,10 +21,14 @@ const toBoolean = ({ value }: { value: unknown }) => {
 };
 
 export class ReportQueryDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Comma-separated branch IDs. Selected branches are queried sequentially.',
+    example: '29,31',
+  })
   @IsString()
-  @MaxLength(64)
-  branchId!: string;
+  @MaxLength(2048)
+  @Matches(/^[A-Za-z0-9_-]+(?:,[A-Za-z0-9_-]+)*$/)
+  branchIds!: string;
 
   @ApiProperty({ format: 'date' })
   @IsDateString({ strict: true })
@@ -40,6 +44,7 @@ export class ReportQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(100)
   page = 1;
 
   @ApiPropertyOptional({ default: 50, maximum: 100 })

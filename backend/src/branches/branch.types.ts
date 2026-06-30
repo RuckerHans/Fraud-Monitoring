@@ -2,6 +2,7 @@ export interface DatacenterBranch {
   id: string | number;
   branchcode: string;
   branchname: string;
+  branchlocation: string;
   branchservername: string;
   branchserverdatabasename: string;
   branchserverusername: string;
@@ -14,6 +15,6 @@ export interface DatacenterBranch {
 export interface PublicBranch {
   id: string;
   code: string;
-  name: string;
+  location: string;
   online: boolean;
 }

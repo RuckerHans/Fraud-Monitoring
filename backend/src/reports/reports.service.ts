@@ -5,6 +5,7 @@ import { BranchConnectionFactory } from './branch-connection.factory';
 import { ExportQueryDto, ReportQueryDto } from './report-query.dto';
 import { REPORT_COUNT_SQL, REPORT_EXPORT_SQL, REPORT_PAGE_SQL } from './report.sql';
 import { FraudReportRow, PagedReport } from './report.types';
+import { DatacenterBranch } from '../branches/branch.types';
 
 const assumptions = [
   'CustomerName currently falls back to CustomerCode until the branch customer table is confirmed.',
@@ -23,30 +24,36 @@ export class ReportsService {
 
   async find(query: ReportQueryDto, user = 'unknown'): Promise<PagedReport> {
     this.validateRange(query);
-    const started = Date.now();
-    const branch = await this.branches.resolveForConnection(query.branchId);
+    const branchIds = this.branchIds(query);
+    const branches = await this.branches.resolveManyForConnection(branchIds);
     const params = this.params(query);
-    const [rows, countRows] = await this.connections.withConnection(branch, async (source) => {
-      const pageRows = await source.query(REPORT_PAGE_SQL, [
-        ...params,
-        (query.page - 1) * query.pageSize,
-        query.pageSize,
-      ]);
-      const totals = await source.query(REPORT_COUNT_SQL, params);
-      return [pageRows, totals];
-    });
-    const total = Number(countRows[0]?.total ?? 0);
-    this.logger.info({
-      event: 'branch_query',
-      branchId: query.branchId,
-      from: query.from,
-      to: query.to,
-      user,
-      durationMs: Date.now() - started,
-      rowCount: rows.length,
-    });
+    const rows: FraudReportRow[] = [];
+    let total = 0;
+    const perBranchLimit = query.page * query.pageSize;
+    for (const branch of branches) {
+      const started = Date.now();
+      const [branchRows, countRows] = await this.connections.withConnection(
+        branch,
+        async (source) => {
+          const pageRows = await source.query(REPORT_PAGE_SQL, [
+            ...params,
+            0,
+            perBranchLimit,
+          ]);
+          const totals = await source.query(REPORT_COUNT_SQL, params);
+          return [pageRows, totals];
+        },
+      );
+      total += Number(countRows[0]?.total ?? 0);
+      rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+      this.logQuery('branch_query', branch, query, user, started, branchRows.length);
+    }
+    const offset = (query.page - 1) * query.pageSize;
+    const pageRows = rows
+      .sort((left, right) => this.compareRows(left, right))
+      .slice(offset, offset + query.pageSize);
     return {
-      data: rows.map(this.normalize),
+      data: pageRows,
       meta: {
         page: query.page,
         pageSize: query.pageSize,
@@ -59,21 +66,19 @@ export class ReportsService {
 
   async exportRows(query: ExportQueryDto, user = 'unknown'): Promise<FraudReportRow[]> {
     this.validateRange(query);
-    const started = Date.now();
-    const branch = await this.branches.resolveForConnection(query.branchId);
-    const rows = await this.connections.withConnection(branch, (source) =>
-      source.query(REPORT_EXPORT_SQL, this.params(query)),
-    );
-    this.logger.info({
-      event: 'branch_export',
-      branchId: query.branchId,
-      from: query.from,
-      to: query.to,
-      user,
-      durationMs: Date.now() - started,
-      rowCount: rows.length,
-    });
-    return rows.map(this.normalize);
+    const branches = await this.branches.resolveManyForConnection(this.branchIds(query));
+    const rows: FraudReportRow[] = [];
+    for (const branch of branches) {
+      const started = Date.now();
+      const branchRows = await this.connections.withConnection(branch, (source) =>
+        source.query(REPORT_EXPORT_SQL, this.params(query)),
+      );
+      rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+      this.logQuery('branch_export', branch, query, user, started, branchRows.length);
+    }
+    return rows
+      .sort((left, right) => this.compareRows(left, right))
+      .slice(0, 50_000);
   }
 
   private params(query: ReportQueryDto) {
@@ -94,9 +99,20 @@ export class ReportsService {
     if (days > 366) throw new BadRequestException('Date ranges may not exceed 366 days.');
   }
 
-  private normalize(row: any): FraudReportRow {
+  private branchIds(query: ReportQueryDto): string[] {
+    const ids = [...new Set(query.branchIds.split(',').map((id) => id.trim()))];
+    if (ids.length > 100) {
+      throw new BadRequestException('At most 100 branches may be selected.');
+    }
+    return ids;
+  }
+
+  private normalize(row: any, branch: DatacenterBranch): FraudReportRow {
     return {
       ...row,
+      branchId: String(branch.id),
+      branchCode: branch.branchcode,
+      branchLocation: branch.branchlocation || branch.branchcode,
       transactionNo: String(row.transactionNo),
       amount: Number(row.amount ?? 0),
       returned: Boolean(row.returned),
@@ -104,5 +120,29 @@ export class ReportsService {
       pointsEarned: Number(row.pointsEarned ?? 0),
       pointsRedeemed: Number(row.pointsRedeemed ?? 0),
     };
+  }
+
+  private compareRows(left: FraudReportRow, right: FraudReportRow): number {
+    const dateOrder = new Date(right.logDate).getTime() - new Date(left.logDate).getTime();
+    return dateOrder || right.transactionNo.localeCompare(left.transactionNo);
+  }
+
+  private logQuery(
+    event: 'branch_query' | 'branch_export',
+    branch: DatacenterBranch,
+    query: ReportQueryDto,
+    user: string,
+    started: number,
+    rowCount: number,
+  ) {
+    this.logger.info({
+      event,
+      branchId: String(branch.id),
+      from: query.from,
+      to: query.to,
+      user,
+      durationMs: Date.now() - started,
+      rowCount,
+    });
   }
 }

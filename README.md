@@ -7,13 +7,13 @@ A stateless, read-only reporting layer for branch POS transactions. The monorepo
 ```text
 Browser (Next.js)
   ├─ branch list ────────────────┐
-  ├─ one branch report request ──┼─> NestJS API
+  ├─ selected branch report ─────┼─> NestJS API
   └─ filtered XLSX export ───────┘     ├─> Datacenter branch directory
                                        ├─> Existing auth service
                                        └─> One selected MSSQL branch (short-lived)
 ```
 
-The public branch list is cached for two minutes by default after credentials have been removed. Report requests resolve the selected branch record fresh, initialize one dynamic TypeORM `DataSource`, execute fixed parameterized SQL, and destroy the connection in `finally`. There is no automatic branch fan-out and no boot-time database connection.
+The public branch list is cached for two minutes by default after credentials have been removed. Branches are labeled with `branchlocation` and sorted alphabetically. Report requests resolve only the explicitly selected online branches, then process them sequentially: initialize one dynamic TypeORM `DataSource`, execute fixed parameterized SQL, destroy it in `finally`, and continue to the next selection. There is no concurrent connection fan-out and no boot-time database connection.
 
 ## Repository
 
@@ -58,13 +58,13 @@ The compose file intentionally contains only `backend` and `frontend`. It is for
 - `POST /api/auth/login` — delegates to the existing auth service.
 - `GET /api/auth/me` — validates an external session through the auth adapter.
 - `GET /api/branches` — sanitized branches including offline records.
-- `GET /api/reports/transactions` — one selected branch, date range, filters, and pagination.
+- `GET /api/reports/transactions` — explicitly selected branches, date range, filters, and pagination.
 - `GET /api/reports/transactions/export` — the same filters as XLSX, capped at 50,000 rows.
 
 Report query parameters:
 
 ```text
-branchId, from, to, page, pageSize, returned?, voided?, points?
+branchIds, from, to, page, pageSize, returned?, voided?, points?
 ```
 
 Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDate < DATEADD(day, 1, to)` before exception filters to make existing date indexes useful. Date ranges are capped at 366 days and page size at 100.
@@ -93,7 +93,7 @@ Two details cannot be finalized without the live contracts:
 
 The auth implementation remains behind `AuthProvider`. The frontend recognizes common login response token names (`access_token`, `accessToken`, `token`), while the backend cryptographically verifies bearer tokens or `access_token`/`accessToken`/`token` cookies on every guarded request.
 
-The branch port defaults to `1433`; `branchserverport` is honored if the directory returns it. V1 is intentionally single-branch only.
+`branchIds` is a comma-separated list and is capped at 100 explicit selections. “Select all online” simply fills that explicit selection; the backend still queries branches sequentially. The branch port defaults to `1433`, and `branchserverport` is honored if the directory returns it.
 
 ## Verification
 

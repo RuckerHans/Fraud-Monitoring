@@ -5,7 +5,7 @@ import { ReportQueryDto } from '../src/reports/report-query.dto';
 describe('ReportQueryDto', () => {
   it('rejects unknown boolean spellings before a branch connection is attempted', async () => {
     const dto = plainToInstance(ReportQueryDto, {
-      branchId: '31',
+      branchIds: '29,31',
       from: '2026-01-01',
       to: '2026-01-02',
       returned: 'yes',
@@ -16,7 +16,7 @@ describe('ReportQueryDto', () => {
 
   it('accepts explicit query-string booleans', async () => {
     const dto = plainToInstance(ReportQueryDto, {
-      branchId: '31',
+      branchIds: '29,31',
       from: '2026-01-01',
       to: '2026-01-02',
       returned: 'false',

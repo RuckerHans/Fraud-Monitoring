@@ -11,8 +11,11 @@ export class ExcelExportService {
     const sheet = workbook.addWorksheet('Transactions', {
       views: [{ state: 'frozen', ySplit: 1 }],
     });
-    sheet.autoFilter = 'A1:L1';
+    sheet.autoFilter = 'A1:O1';
     sheet.columns = [
+      { header: 'Branch Code', key: 'branchCode', width: 14 },
+      { header: 'Branch Location', key: 'branchLocation', width: 24 },
+      { header: 'Branch ID', key: 'branchId', width: 12 },
       { header: 'Transaction No.', key: 'transactionNo', width: 20 },
       { header: 'Customer Code', key: 'customerCode', width: 18 },
       { header: 'Customer Name', key: 'customerName', width: 28 },
@@ -29,6 +32,8 @@ export class ExcelExportService {
     for (const row of rows) {
       sheet.addRow({
         ...row,
+        branchCode: this.safeText(row.branchCode),
+        branchLocation: this.safeText(row.branchLocation),
         transactionNo: this.safeText(row.transactionNo),
         customerCode: this.safeText(row.customerCode),
         customerName: this.safeText(row.customerName),

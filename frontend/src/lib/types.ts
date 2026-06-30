@@ -1,7 +1,7 @@
 export interface Branch {
   id: string;
   code: string;
-  name: string;
+  location: string;
   online: boolean;
 }
 
@@ -12,6 +12,9 @@ export interface AuthenticatedUser {
 }
 
 export interface Transaction {
+  branchId: string;
+  branchCode: string;
+  branchLocation: string;
   transactionNo: string;
   customerCode: string | null;
   customerName: string | null;
@@ -33,7 +36,7 @@ export interface ReportResponse {
 }
 
 export interface ReportParams {
-  branchId: string;
+  branchIds: string[];
   from: string;
   to: string;
   page: number;

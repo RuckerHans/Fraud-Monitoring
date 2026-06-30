@@ -76,6 +76,37 @@ input, select {
 }
 input:focus, select:focus { border-color: #7897e6; box-shadow: 0 0 0 3px #eaf0ff; }
 .filter-card > .primary { align-self: flex-end; height: 42px; }
+.branch-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.branch-picker-heading {
+  min-height: 19px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.branch-picker-heading legend {
+  padding: 0; color: #586479; font-size: 11px; font-weight: 700;
+}
+.branch-picker-heading .select-all {
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.branch-picker-heading .select-all input,
+.branch-options input {
+  width: 15px; height: 15px; margin: 0; flex: 0 0 auto;
+}
+.branch-picker-heading .select-all span {
+  margin: 0; font-size: 10px; color: var(--blue); white-space: nowrap;
+}
+.branch-options {
+  height: 106px; overflow-y: auto; border: 1px solid #d8dee9; border-radius: 8px;
+  background: #fff; padding: 5px;
+}
+.branch-options > label {
+  min-height: 30px; display: flex; align-items: center; gap: 8px;
+  padding: 5px 7px; border-radius: 6px; cursor: pointer;
+}
+.branch-options > label:hover { background: #f3f6fc; }
+.branch-options > label.offline { cursor: not-allowed; opacity: .56; }
+.branch-options > label span { margin: 0; color: var(--ink); font-size: 11px; }
+.branch-options small { color: var(--muted); margin-left: 4px; }
+.branch-options em { margin-left: auto; color: #a94848; font-size: 9px; font-style: normal; }
+.branch-loading { display: block; padding: 10px; color: var(--muted); font-size: 11px; }
 .subfilters { display: flex; gap: 12px; grid-column: 1 / -1; padding-top: 2px; }
 .subfilters label { width: 160px; }
 .alert {

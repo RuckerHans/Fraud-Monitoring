@@ -27,7 +27,10 @@ export const api = createApi({
       providesTags: ['Branches'],
     }),
     getTransactions: builder.query<ReportResponse, ReportParams>({
-      query: (params) => ({ url: '/reports/transactions', params }),
+      query: ({ branchIds, ...params }) => ({
+        url: '/reports/transactions',
+        params: { ...params, branchIds: branchIds.join(',') },
+      }),
     }),
     login: builder.mutation<Record<string, unknown>, { username: string; password: string }>({
       query: (body) => ({ url: '/auth/login', method: 'POST', body }),

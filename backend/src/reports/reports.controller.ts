@@ -28,7 +28,7 @@ export class ReportsController {
 
   @Get('transactions')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Query one branch with date filters and pagination' })
+  @ApiOperation({ summary: 'Query explicitly selected branches sequentially with pagination' })
   transactions(
     @Query() query: ReportQueryDto,
     @Req() request: Request & { user?: AuthenticatedUser },
