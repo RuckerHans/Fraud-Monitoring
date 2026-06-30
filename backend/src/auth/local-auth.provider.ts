@@ -111,12 +111,23 @@ export class LocalAuthProvider implements AuthProvider {
       : '';
     if (code === 'ETIMEDOUT') return 'The authentication database connection timed out.';
     if (code === 'ECONNREFUSED') return 'The authentication database refused the connection.';
+    if (['ENOTFOUND', 'EAI_AGAIN'].includes(code)) {
+      return 'The authentication database hostname could not be resolved.';
+    }
     if (code === 'ER_ACCESS_DENIED_ERROR') {
       return 'The authentication database rejected its configured login.';
+    }
+    if (code === 'ER_DBACCESS_DENIED_ERROR') {
+      return 'The configured MySQL user cannot access the authentication database.';
+    }
+    if (code === 'ER_BAD_DB_ERROR') {
+      return 'The configured authentication database does not exist.';
     }
     if (code === 'ER_NO_SUCH_TABLE') {
       return 'The monitoring_auth table was not found in the authentication database.';
     }
-    return 'The authentication database is unavailable.';
+    return code
+      ? `The authentication database returned error ${code}.`
+      : 'The authentication database is unavailable.';
   }
 }

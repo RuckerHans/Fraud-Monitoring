@@ -43,6 +43,15 @@ describe('LocalAuthProvider', () => {
     });
   });
 
+  it('reports an unknown database explicitly', async () => {
+    findUser.mockRejectedValue(Object.assign(new Error('unknown database'), {
+      code: 'ER_BAD_DB_ERROR',
+    }));
+    await expect(provider.login('auditor', 'password')).rejects.toMatchObject({
+      message: 'The configured authentication database does not exist.',
+    });
+  });
+
   it('rejects tokens signed with a different secret', async () => {
     const token = sign({ username: 'attacker' }, 'another-secret', {
       algorithm: 'HS256',
