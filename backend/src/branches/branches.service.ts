@@ -66,7 +66,9 @@ export class BranchesService {
       if (!Array.isArray(data)) throw new Error('Invalid branch response');
       return data;
     } catch {
-      throw new UpstreamUnavailableError('Datacenter API unavailable');
+      throw new UpstreamUnavailableError(
+        'The datacenter branch directory is unreachable. Check LAN/VPN access to the configured directory service.',
+      );
     }
   }
 

@@ -19,7 +19,9 @@ export class SafeExceptionFilter implements ExceptionFilter {
         exception.message || 'The selected branch is unreachable or timed out.',
       );
     } else if (exception instanceof UpstreamUnavailableError) {
-      mapped = new BadGatewayException('A required upstream service is unavailable.');
+      mapped = new BadGatewayException(
+        exception.message || 'A required upstream service is unavailable.',
+      );
     } else if (exception instanceof HttpException) {
       mapped = exception;
     } else {
