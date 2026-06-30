@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { Branch, ReportParams, ReportResponse } from '@/lib/types';
+import type { AuthenticatedUser, Branch, ReportParams, ReportResponse } from '@/lib/types';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6060/api';
 
@@ -16,8 +16,12 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Branches'],
+  tagTypes: ['Auth', 'Branches'],
   endpoints: (builder) => ({
+    getMe: builder.query<AuthenticatedUser, void>({
+      query: () => '/auth/me',
+      providesTags: ['Auth'],
+    }),
     getBranches: builder.query<Branch[], void>({
       query: () => '/branches',
       providesTags: ['Branches'],
@@ -31,5 +35,10 @@ export const api = createApi({
   }),
 });
 
-export const { useGetBranchesQuery, useGetTransactionsQuery, useLoginMutation } = api;
+export const {
+  useGetMeQuery,
+  useGetBranchesQuery,
+  useGetTransactionsQuery,
+  useLoginMutation,
+} = api;
 export { baseUrl };

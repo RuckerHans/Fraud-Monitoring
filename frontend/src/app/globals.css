@@ -138,6 +138,24 @@ tbody tr:hover { background: #fbfcff; }
 .login-card label { display: block; margin: 14px 0; }
 .login-card .primary { width: 100%; margin-top: 7px; }
 .close { position: absolute; top: 14px; right: 17px; border: 0; background: none; font-size: 22px; color: var(--muted); }
+.login-card .password-toggle {
+  display: flex; align-items: center; gap: 8px; width: max-content; cursor: pointer;
+  margin-top: -3px;
+}
+.password-toggle input { width: 16px; height: 16px; margin: 0; }
+.password-toggle span { margin: 0; font-size: 12px; font-weight: 600; }
+.login-error {
+  padding: 10px 12px; margin: 10px 0; border: 1px solid #f1b9b9;
+  border-radius: 8px; color: #9f2f2f; background: #fff0f0; font-size: 12px;
+}
+.session-check { text-align: center; }
+.session-check p { margin-bottom: 0 !important; }
+.session-spinner {
+  display: block; width: 34px; height: 34px; margin: 0 auto 18px;
+  border: 3px solid #dce4f6; border-top-color: var(--blue); border-radius: 50%;
+  animation: session-spin .8s linear infinite;
+}
+@keyframes session-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 980px) {
   .filter-card { grid-template-columns: repeat(2, 1fr); }

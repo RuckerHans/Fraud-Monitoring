@@ -6,6 +6,7 @@ import type { ReportParams } from '@/lib/types';
 import {
   baseUrl,
   useGetBranchesQuery,
+  useGetMeQuery,
   useGetTransactionsQuery,
   useLoginMutation,
 } from '@/store/api';
@@ -36,13 +37,15 @@ export function Dashboard() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState('');
+  const { data: currentUser, isLoading: checkingSession } = useGetMeQuery();
+  const signedIn = Boolean(currentUser);
   const { data: branches = [], isLoading: loadingBranches, isError: branchError } =
-    useGetBranchesQuery();
+    useGetBranchesQuery(undefined, { skip: !signedIn });
   const {
     data: report,
     isFetching,
     error: reportError,
-  } = useGetTransactionsQuery(applied!, { skip: !applied });
+  } = useGetTransactionsQuery(applied!, { skip: !applied || !signedIn });
   const selected = branches.find((branch) => branch.id === draft.branchId);
 
   const stats = useMemo(() => {
@@ -115,8 +118,8 @@ export function Dashboard() {
         </div>
         <div className="top-actions">
           <span className="live-dot">Systems live</span>
-          <button className="avatar" onClick={() => setLoginOpen(true)} aria-label="Sign in">
-            AU
+          <button className="avatar" onClick={() => setLoginOpen(true)} aria-label="Authentication">
+            {currentUser?.username?.slice(0, 2).toUpperCase() ?? 'AU'}
           </button>
         </div>
       </header>
@@ -289,48 +292,84 @@ export function Dashboard() {
           )}
         </section>
       </section>
-      {loginOpen && <LoginDialog close={() => setLoginOpen(false)} setNotice={setNotice} />}
+      {checkingSession ? (
+        <SessionCheck />
+      ) : (
+        (!signedIn || loginOpen) && (
+          <LoginDialog close={signedIn ? () => setLoginOpen(false) : undefined} />
+        )
+      )}
     </main>
   );
 }
 
 function LoginDialog({
   close,
-  setNotice,
 }: {
-  close: () => void;
-  setNotice: (message: string) => void;
+  close?: () => void;
 }) {
   const [login, { isLoading }] = useLoginMutation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    setError('');
     try {
       const result = await login({ username, password }).unwrap();
       const token = authToken(result);
-      if (token) window.localStorage.setItem('fraud-monitoring-token', token);
-      setNotice(token ? 'Signed in successfully.' : 'Login succeeded; upstream token shape still needs mapping.');
-      close();
+      if (token) {
+        window.localStorage.setItem('fraud-monitoring-token', token);
+      } else {
+        window.localStorage.removeItem('fraud-monitoring-token');
+      }
       window.location.reload();
     } catch {
-      setNotice('Sign-in failed. Check your credentials or the auth service.');
-      close();
+      setError('Sign-in failed. Check your credentials and try again.');
     }
   }
 
   return (
     <div className="modal-backdrop" onMouseDown={close}>
       <form className="login-card" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
-        <button type="button" className="close" onClick={close}>×</button>
+        {close && <button type="button" className="close" onClick={close}>×</button>}
         <p className="eyebrow">External authentication</p>
         <h2>Sign in</h2>
         <p>Your credentials are sent directly to the existing company auth service.</p>
         <label><span>Username</span><input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required /></label>
-        <label><span>Password</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+        <label>
+          <span>Password</span>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        <label className="password-toggle">
+          <input
+            type="checkbox"
+            checked={showPassword}
+            onChange={(event) => setShowPassword(event.target.checked)}
+          />
+          <span>Show password</span>
+        </label>
+        {error && <div className="login-error" role="alert">{error}</div>}
         <button className="primary" disabled={isLoading}>{isLoading ? 'Signing in…' : 'Continue'}</button>
       </form>
+    </div>
+  );
+}
+
+function SessionCheck() {
+  return (
+    <div className="modal-backdrop">
+      <div className="login-card session-check" role="status">
+        <span className="session-spinner" aria-hidden="true" />
+        <h2>Checking session</h2>
+        <p>Please wait while your access is verified.</p>
+      </div>
     </div>
   );
 }

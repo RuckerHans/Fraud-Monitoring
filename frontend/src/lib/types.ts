@@ -5,6 +5,12 @@ export interface Branch {
   online: boolean;
 }
 
+export interface AuthenticatedUser {
+  id?: string;
+  username: string;
+  roles: string[];
+}
+
 export interface Transaction {
   transactionNo: string;
   customerCode: string | null;
