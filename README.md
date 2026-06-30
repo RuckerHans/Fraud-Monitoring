@@ -89,7 +89,7 @@ Two details cannot be finalized without the live contracts:
 1. `CustomerName` currently falls back to `FinishedTransaction.CustomerCode`. Once the customer master table and join key are confirmed, update the fixed query in `backend/src/reports/report.sql.ts`.
 2. Positive `FinishedSales.Points` with `PointsPosted = 1` is treated as earned; negative points are treated as redeemed. Confirm the loyalty ledger or transaction-type field before relying on this classification.
 
-`DATACENTER_ACTIVE_VALUE` defaults to `1`. The supplied example contains `isactive: 0` alongside `branchconnected: 1`, so confirm whether `0` actually means active in this API and set the environment value accordingly.
+`DATACENTER_ACTIVE_VALUE` defaults to `0`, matching the supplied directory record where `isactive: 0` and `branchconnected: 1` represents an online branch.
 
 The auth implementation remains behind `AuthProvider`. The frontend recognizes common login response token names (`access_token`, `accessToken`, `token`), while the backend cryptographically verifies bearer tokens or `access_token`/`accessToken`/`token` cookies on every guarded request.
 

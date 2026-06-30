@@ -63,7 +63,7 @@ export class BranchesService {
   }
 
   private isOnline(branch: DatacenterBranch): boolean {
-    const expectedActive = this.config.get<string>('DATACENTER_ACTIVE_VALUE', '1');
+    const expectedActive = this.config.get<string>('DATACENTER_ACTIVE_VALUE', '0');
     return (
       String(branch.isactive).toLowerCase() === expectedActive.toLowerCase() &&
       ['1', 'true'].includes(String(branch.branchconnected).toLowerCase())
