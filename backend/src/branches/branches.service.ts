@@ -20,6 +20,7 @@ export class BranchesService {
     }
     const records = await this.fetchRecords();
     const branches = records
+      .filter((branch) => this.isIncluded(branch))
       .map((branch) => this.toPublic(branch))
       .sort((left, right) =>
         left.location.localeCompare(right.location, undefined, { sensitivity: 'base' }) ||
@@ -43,6 +44,9 @@ export class BranchesService {
     return branchIds.map((branchId) => {
       const branch = byId.get(branchId);
       if (!branch) throw new NotFoundException(`Branch ${branchId} was not found.`);
+      if (!this.isIncluded(branch)) {
+        throw new NotFoundException(`Branch ${branchId} is excluded from monitoring.`);
+      }
       if (!this.isOnline(branch)) {
         throw new NotFoundException(`Branch ${branchId} is currently offline.`);
       }
@@ -81,5 +85,9 @@ export class BranchesService {
       String(branch.isactive).toLowerCase() === expectedActive.toLowerCase() &&
       ['1', 'true'].includes(String(branch.branchconnected).toLowerCase())
     );
+  }
+
+  private isIncluded(branch: DatacenterBranch): boolean {
+    return !branch.branchlocation?.trim().toUpperCase().endsWith('_FC');
   }
 }

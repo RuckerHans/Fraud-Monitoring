@@ -13,7 +13,7 @@ Browser (Next.js)
                                        └─> One selected MSSQL branch (short-lived)
 ```
 
-The public branch list is cached for two minutes by default after credentials have been removed. Branches are labeled with `branchlocation` and sorted alphabetically. Report requests resolve only the explicitly selected online branches, then process them sequentially: initialize one dynamic TypeORM `DataSource`, execute fixed parameterized SQL, destroy it in `finally`, and continue to the next selection. There is no concurrent connection fan-out and no boot-time database connection.
+The public branch list is cached for two minutes by default after credentials have been removed. Branches are labeled with `branchlocation`, sorted alphabetically, and locations ending in `_FC` are excluded. Report requests resolve only the explicitly selected online branches, then process them sequentially: initialize one dynamic TypeORM `DataSource`, execute fixed parameterized SQL, destroy it in `finally`, and continue to the next selection. There is no concurrent connection fan-out and no boot-time database connection.
 
 ## Repository
 

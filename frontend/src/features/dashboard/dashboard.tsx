@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { yesterday } from '@/lib/dates';
 import type { ReportParams } from '@/lib/types';
 import {
@@ -34,6 +34,8 @@ export function Dashboard() {
     points: '',
   });
   const [applied, setApplied] = useState<ReportParams | null>(null);
+  const [branchMode, setBranchMode] = useState<'all' | 'specific'>('all');
+  const [branchSearch, setBranchSearch] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState('');
@@ -46,10 +48,33 @@ export function Dashboard() {
     isFetching,
     error: reportError,
   } = useGetTransactionsQuery(applied!, { skip: !applied || !signedIn });
-  const onlineBranches = branches.filter((branch) => branch.online);
-  const selectedBranches = branches.filter((branch) => draft.branchIds.includes(branch.id));
-  const allOnlineSelected =
-    onlineBranches.length > 0 && onlineBranches.every((branch) => draft.branchIds.includes(branch.id));
+  const onlineBranches = useMemo(
+    () => branches.filter((branch) => branch.online),
+    [branches],
+  );
+  const selectedBranches = useMemo(
+    () => branches.filter((branch) => draft.branchIds.includes(branch.id)),
+    [branches, draft.branchIds],
+  );
+  const filteredBranches = useMemo(() => {
+    const search = branchSearch.trim().toLowerCase();
+    if (!search) return branches;
+    return branches.filter((branch) =>
+      `${branch.location} ${branch.code}`.toLowerCase().includes(search),
+    );
+  }, [branches, branchSearch]);
+
+  useEffect(() => {
+    if (branchMode !== 'all' || onlineBranches.length === 0) return;
+    const ids = onlineBranches.map((branch) => branch.id);
+    setDraft((current) => {
+      if (
+        current.branchIds.length === ids.length &&
+        current.branchIds.every((id, index) => id === ids[index])
+      ) return current;
+      return { ...current, branchIds: ids };
+    });
+  }, [branchMode, onlineBranches]);
 
   const stats = useMemo(() => {
     const rows = report?.data ?? [];
@@ -118,11 +143,13 @@ export function Dashboard() {
     }));
   }
 
-  function toggleAllOnline() {
+  function chooseBranchMode(mode: 'all' | 'specific') {
+    setBranchMode(mode);
     setDraft((current) => ({
       ...current,
-      branchIds: allOnlineSelected ? [] : onlineBranches.map((branch) => branch.id),
+      branchIds: mode === 'all' ? onlineBranches.map((branch) => branch.id) : [],
     }));
+    if (mode === 'all') setBranchSearch('');
   }
 
   return (
@@ -157,33 +184,89 @@ export function Dashboard() {
 
         <form className="filter-card" onSubmit={applyFilters}>
           <fieldset className="branch-field" disabled={loadingBranches}>
-            <div className="branch-picker-heading">
-              <legend>Branches</legend>
-              <label className="select-all">
-                <input
-                  type="checkbox"
-                  checked={allOnlineSelected}
-                  onChange={toggleAllOnline}
-                />
-                <span>Select all online ({onlineBranches.length})</span>
-              </label>
+            <legend>Branch scope</legend>
+            <div className="branch-mode-grid">
+              <button
+                type="button"
+                className={branchMode === 'all' ? 'branch-mode selected' : 'branch-mode'}
+                onClick={() => chooseBranchMode('all')}
+              >
+                <span className="mode-icon">▦</span>
+                <span>
+                  <strong>All online branches</strong>
+                  <small>Load all {onlineBranches.length} reporting locations sequentially.</small>
+                </span>
+                {branchMode === 'all' && <b aria-hidden="true">✓</b>}
+              </button>
+              <button
+                type="button"
+                className={branchMode === 'specific' ? 'branch-mode selected' : 'branch-mode'}
+                onClick={() => chooseBranchMode('specific')}
+              >
+                <span className="mode-icon">⌕</span>
+                <span>
+                  <strong>Specific branches</strong>
+                  <small>Search and select only the locations you need.</small>
+                </span>
+                {branchMode === 'specific' && <b aria-hidden="true">✓</b>}
+              </button>
             </div>
-            <div className="branch-options">
-              {loadingBranches ? (
-                <span className="branch-loading">Loading branches…</span>
-              ) : branches.map((branch) => (
-                <label key={branch.id} className={branch.online ? '' : 'offline'}>
-                  <input
-                    type="checkbox"
-                    checked={draft.branchIds.includes(branch.id)}
-                    onChange={() => toggleBranch(branch.id)}
-                    disabled={!branch.online}
-                  />
-                  <span>{branch.location} <small>{branch.code}</small></span>
-                  {!branch.online && <em>Offline</em>}
-                </label>
-              ))}
-            </div>
+            {branchMode === 'specific' && (
+              <div className="specific-branches">
+                <div className="branch-toolbar">
+                  <label className="branch-search">
+                    <span className="sr-only">Search branches</span>
+                    <input
+                      type="search"
+                      value={branchSearch}
+                      onChange={(event) => setBranchSearch(event.target.value)}
+                      placeholder="Search by location or code…"
+                    />
+                  </label>
+                  <span>{draft.branchIds.length} selected</span>
+                  <button
+                    type="button"
+                    onClick={() => setDraft((current) => ({
+                      ...current,
+                      branchIds: onlineBranches.map((branch) => branch.id),
+                    }))}
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDraft((current) => ({ ...current, branchIds: [] }))}
+                    disabled={!draft.branchIds.length}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="branch-card-grid">
+                  {loadingBranches ? (
+                    <span className="branch-loading">Loading branches…</span>
+                  ) : filteredBranches.length ? filteredBranches.map((branch) => {
+                    const selected = draft.branchIds.includes(branch.id);
+                    return (
+                      <button
+                        type="button"
+                        key={branch.id}
+                        className={`branch-card${selected ? ' selected' : ''}${branch.online ? '' : ' offline'}`}
+                        onClick={() => toggleBranch(branch.id)}
+                        disabled={!branch.online}
+                        aria-pressed={selected}
+                      >
+                        <span>{branch.code}</span>
+                        <strong>{branch.location}</strong>
+                        {selected && <b aria-hidden="true">✓</b>}
+                        {!branch.online && <em>Offline</em>}
+                      </button>
+                    );
+                  }) : (
+                    <span className="branch-loading">No branches match your search.</span>
+                  )}
+                </div>
+              </div>
+            )}
           </fieldset>
           <label>
             <span>From</span>

@@ -23,6 +23,14 @@ describe('BranchesService', () => {
           isactive: 0,
           branchconnected: 1,
         },
+        {
+          id: '99',
+          branchcode: 'LFC',
+          branchname: 'Same Company',
+          branchlocation: 'LASPINAS_FC',
+          isactive: 0,
+          branchconnected: 1,
+        },
       ],
     }));
     const service = new BranchesService(
