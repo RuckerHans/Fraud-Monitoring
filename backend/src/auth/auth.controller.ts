@@ -11,7 +11,7 @@ export class AuthController {
   constructor(private readonly auth: AuthProvider) {}
 
   @Post('login')
-  @ApiOperation({ summary: 'Delegate login to the existing auth service' })
+  @ApiOperation({ summary: 'Authenticate against the existing monitoring_auth table' })
   async login(
     @Body() input: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -24,7 +24,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Validate the current external session' })
+  @ApiOperation({ summary: 'Validate the current application JWT' })
   me(@Req() request: Request & { user?: unknown }) {
     return request.user;
   }

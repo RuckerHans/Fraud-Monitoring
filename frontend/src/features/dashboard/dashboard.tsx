@@ -614,9 +614,9 @@ function LoginDialog({
     <div className="modal-backdrop" onMouseDown={close}>
       <form className="login-card" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
         {close && <button type="button" className="close" onClick={close}>×</button>}
-        <p className="eyebrow">External authentication</p>
+        <p className="eyebrow">Secure authentication</p>
         <h2>Sign in</h2>
-        <p>Your credentials are sent directly to the existing company auth service.</p>
+        <p>Your credentials are checked against the existing internal monitoring account table.</p>
         {message && <div className="session-message">{message}</div>}
         <label><span>Username</span><input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required /></label>
         <label>

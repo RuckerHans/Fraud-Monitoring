@@ -9,7 +9,7 @@ Browser (Next.js)
   ├─ branch list ────────────────┐
   ├─ selected branch report ─────┼─> NestJS API
   └─ filtered XLSX export ───────┘     ├─> Datacenter branch directory
-                                       ├─> Existing auth service
+                                       ├─> Existing monitoring_auth MySQL table (read-only)
                                        └─> One selected MSSQL branch (short-lived)
 ```
 
@@ -57,8 +57,8 @@ The compose file intentionally contains only `backend` and `frontend`. It is for
 
 ## API
 
-- `POST /api/auth/login` — delegates to the existing auth service.
-- `GET /api/auth/me` — validates an external session through the auth adapter.
+- `POST /api/auth/login` — validates against the existing `monitoring_auth` MySQL table and issues an application JWT.
+- `GET /api/auth/me` — validates the current application JWT.
 - `GET /api/branches` — sanitized branches including offline records.
 - `GET /api/reports/transactions` — explicitly selected branches, date range, filters, and pagination.
 - `GET /api/reports/transactions/export` — the same filters as XLSX, capped at 50,000 rows.
@@ -74,7 +74,7 @@ Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDa
 ## Security and operational behavior
 
 - Every branch query is read-only and uses fixed SQL with driver-bound parameters.
-- The backend sends `API_KEY` as `x-api-key` to the auth service and as `api-key` to the branch directory. It is never exposed through `NEXT_PUBLIC_*` or browser requests.
+- The backend sends `API_KEY` as `api-key` only to the branch directory. It is never exposed through `NEXT_PUBLIC_*` or browser requests.
 - Guarded endpoints verify JWT signatures with `JWT_SECRET`, allow only HS256, and require a valid `exp` claim. Optional `JWT_ISSUER` and `JWT_AUDIENCE` values tighten claim validation when supplied.
 - `/api/auth/me` returns the verified expiration timestamp; the frontend signs out at that exact time, removes its stored token, and restores the blocking login screen. It also revalidates the session every 60 seconds and when the window regains focus.
 - Use a least-privilege MSSQL login whose only permissions are `SELECT` on required objects. Application code cannot compensate for an over-privileged DB account.
@@ -94,7 +94,7 @@ Two details cannot be finalized without the live contracts:
 
 `DATACENTER_ACTIVE_VALUE` defaults to `0`, matching the supplied directory record where `isactive: 0` and `branchconnected: 1` represents an online branch.
 
-The auth implementation remains behind `AuthProvider`. The frontend recognizes common login response token names (`access_token`, `accessToken`, `token`), while the backend cryptographically verifies bearer tokens or `access_token`/`accessToken`/`token` cookies on every guarded request.
+The auth implementation remains behind `AuthProvider`. `LocalAuthProvider` performs a parameterized, read-only lookup against `monitoring_auth`, issues an HS256 JWT, and cryptographically verifies bearer tokens on every guarded request. The application does not create, migrate, or write authentication tables.
 
 `branchIds` is a comma-separated list and is capped at 100 explicit selections. “Select all online” simply fills that explicit selection; the backend still queries branches sequentially. The branch port defaults to `1433`, and `branchserverport` is honored if the directory returns it.
 
