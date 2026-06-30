@@ -29,6 +29,18 @@ describe('BranchConnectionFactory', () => {
     });
   });
 
+  it('converts environment timeout strings to driver numbers', () => {
+    const configuredFactory = new BranchConnectionFactory(new ConfigService({
+      MSSQL_CONNECT_TIMEOUT_MS: '5000',
+      MSSQL_REQUEST_TIMEOUT_MS: '15000',
+    }));
+    const source = configuredFactory.create(branch);
+    expect(source.options.extra).toMatchObject({
+      connectionTimeout: 5000,
+      requestTimeout: 15000,
+    });
+  });
+
   it('always destroys an initialized request connection', async () => {
     const source = {
       initialize: jest.fn().mockResolvedValue(undefined),

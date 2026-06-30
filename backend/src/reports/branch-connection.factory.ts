@@ -46,8 +46,12 @@ export class BranchConnectionFactory {
       logging: false,
       options: { encrypt: false, trustServerCertificate: true },
       extra: {
-        connectionTimeout: this.config.get<number>('MSSQL_CONNECT_TIMEOUT_MS', 5_000),
-        requestTimeout: this.config.get<number>('MSSQL_REQUEST_TIMEOUT_MS', 15_000),
+        connectionTimeout: Number(
+          this.config.get<string | number>('MSSQL_CONNECT_TIMEOUT_MS', 5_000),
+        ),
+        requestTimeout: Number(
+          this.config.get<string | number>('MSSQL_REQUEST_TIMEOUT_MS', 15_000),
+        ),
         pool: { max: 2, min: 0, idleTimeoutMillis: 10_000 },
       },
     });
@@ -68,7 +72,10 @@ export class BranchConnectionFactory {
       error?.driverError?.message ??
       '',
     ).toLowerCase();
-    if (message.includes('timeout') || message.includes('timed out')) return 'ETIMEOUT';
+    if (
+      message.includes('timed out') ||
+      (message.includes('failed to connect') && message.includes('ms'))
+    ) return 'ETIMEOUT';
     if (message.includes('login failed')) return 'ELOGIN';
     if (message.includes('failed to connect') || message.includes('socket')) return 'ESOCKET';
     return '';

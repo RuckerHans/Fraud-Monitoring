@@ -31,7 +31,9 @@ export class BranchesService {
       );
     this.publicCache = {
       branches,
-      expiresAt: Date.now() + this.config.get<number>('BRANCH_CACHE_TTL_MS', 120_000),
+      expiresAt: Date.now() + Number(
+        this.config.get<string | number>('BRANCH_CACHE_TTL_MS', 120_000),
+      ),
     };
     return branches;
   }
@@ -118,7 +120,9 @@ export class BranchesService {
       branchname: '',
       branchlocation: this.config.getOrThrow<string>('DIRECT_BRANCH_LOCATION'),
       branchservername: this.config.getOrThrow<string>('DIRECT_BRANCH_HOST'),
-      branchserverport: this.config.get<number>('DIRECT_BRANCH_PORT', 1433),
+      branchserverport: Number(
+        this.config.get<string | number>('DIRECT_BRANCH_PORT', 1433),
+      ),
       branchserverdatabasename: this.config.getOrThrow<string>('DIRECT_BRANCH_DATABASE'),
       branchserverusername: this.config.getOrThrow<string>('DIRECT_BRANCH_USERNAME'),
       branchserverpassword: this.config.getOrThrow<string>('DIRECT_BRANCH_PASSWORD'),

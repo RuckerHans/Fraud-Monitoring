@@ -20,11 +20,13 @@ export class AuthDatabaseService implements OnApplicationShutdown {
   constructor(config: ConfigService) {
     this.pool = createPool({
       host: config.getOrThrow<string>('AUTH_MYSQL_HOST'),
-      port: Number(config.get<number>('AUTH_MYSQL_PORT', 3306)),
+      port: Number(config.get<string | number>('AUTH_MYSQL_PORT', 3306)),
       user: config.getOrThrow<string>('AUTH_MYSQL_USER'),
       password: config.getOrThrow<string>('AUTH_MYSQL_PASSWORD'),
       database: config.getOrThrow<string>('AUTH_MYSQL_DATABASE'),
-      connectTimeout: config.get<number>('AUTH_MYSQL_CONNECT_TIMEOUT_MS', 5_000),
+      connectTimeout: Number(
+        config.get<string | number>('AUTH_MYSQL_CONNECT_TIMEOUT_MS', 5_000),
+      ),
       waitForConnections: true,
       connectionLimit: 5,
       queueLimit: 20,
