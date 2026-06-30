@@ -51,4 +51,32 @@ describe('BranchesService', () => {
       expect.objectContaining({ headers: { 'api-key': 'test-key' } }),
     );
   });
+
+  it('bypasses the directory and permits only the configured direct branch', async () => {
+    const get = jest.fn();
+    const service = new BranchesService(
+      { get } as unknown as HttpService,
+      new ConfigService({
+        DIRECT_BRANCH_MODE: 'true',
+        DIRECT_BRANCH_ID: '31',
+        DIRECT_BRANCH_CODE: 'BGB',
+        DIRECT_BRANCH_LOCATION: 'BAGUMBONG',
+        DIRECT_BRANCH_HOST: '192.168.5.36',
+        DIRECT_BRANCH_PORT: 1433,
+        DIRECT_BRANCH_DATABASE: 'srsbag',
+        DIRECT_BRANCH_USERNAME: 'reader',
+        DIRECT_BRANCH_PASSWORD: 'secret',
+        DATACENTER_ACTIVE_VALUE: '0',
+      }),
+    );
+
+    await expect(service.list()).resolves.toEqual([
+      { id: '31', code: 'BGB', location: 'BAGUMBONG', online: true },
+    ]);
+    await expect(service.resolveForConnection('31')).resolves.toMatchObject({
+      branchservername: '192.168.5.36',
+      branchserverdatabasename: 'srsbag',
+    });
+    expect(get).not.toHaveBeenCalled();
+  });
 });

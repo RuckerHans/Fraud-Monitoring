@@ -45,6 +45,8 @@ Open:
 
 The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
 
+For isolated connectivity diagnosis only, `DIRECT_BRANCH_MODE=true` bypasses the directory API and exposes one branch configured through `DIRECT_BRANCH_*` values in the ignored `.env`. Disable this mode after testing; production must use the datacenter directory.
+
 Development containers:
 
 ```powershell

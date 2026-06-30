@@ -15,6 +15,9 @@ export class BranchesService {
   ) {}
 
   async list(): Promise<PublicBranch[]> {
+    const directBranch = this.directBranch();
+    if (directBranch) return [this.toPublic(directBranch)];
+
     if (this.publicCache && this.publicCache.expiresAt > Date.now()) {
       return this.publicCache.branches;
     }
@@ -39,6 +42,18 @@ export class BranchesService {
   }
 
   async resolveManyForConnection(branchIds: string[]): Promise<DatacenterBranch[]> {
+    const directBranch = this.directBranch();
+    if (directBranch) {
+      const directId = String(directBranch.id);
+      const invalidId = branchIds.find((branchId) => branchId !== directId);
+      if (invalidId) {
+        throw new NotFoundException(
+          `Direct branch diagnostic mode only permits branch ${directId}.`,
+        );
+      }
+      return branchIds.map(() => directBranch);
+    }
+
     const records = await this.fetchRecords();
     const byId = new Map(records.map((branch) => [String(branch.id), branch]));
     return branchIds.map((branchId) => {
@@ -91,5 +106,24 @@ export class BranchesService {
 
   private isIncluded(branch: DatacenterBranch): boolean {
     return !branch.branchlocation?.trim().toUpperCase().endsWith('_FC');
+  }
+
+  private directBranch(): DatacenterBranch | undefined {
+    if (this.config.get<string>('DIRECT_BRANCH_MODE', 'false').toLowerCase() !== 'true') {
+      return undefined;
+    }
+    return {
+      id: this.config.getOrThrow<string>('DIRECT_BRANCH_ID'),
+      branchcode: this.config.getOrThrow<string>('DIRECT_BRANCH_CODE'),
+      branchname: '',
+      branchlocation: this.config.getOrThrow<string>('DIRECT_BRANCH_LOCATION'),
+      branchservername: this.config.getOrThrow<string>('DIRECT_BRANCH_HOST'),
+      branchserverport: this.config.get<number>('DIRECT_BRANCH_PORT', 1433),
+      branchserverdatabasename: this.config.getOrThrow<string>('DIRECT_BRANCH_DATABASE'),
+      branchserverusername: this.config.getOrThrow<string>('DIRECT_BRANCH_USERNAME'),
+      branchserverpassword: this.config.getOrThrow<string>('DIRECT_BRANCH_PASSWORD'),
+      isactive: this.config.get<string>('DATACENTER_ACTIVE_VALUE', '0'),
+      branchconnected: 1,
+    };
   }
 }
