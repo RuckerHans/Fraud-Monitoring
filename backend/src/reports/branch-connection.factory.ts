@@ -50,7 +50,7 @@ export class BranchConnectionFactory {
           this.config.get<string | number>('MSSQL_CONNECT_TIMEOUT_MS', 30_000),
         ),
         requestTimeout: Number(
-          this.config.get<string | number>('MSSQL_REQUEST_TIMEOUT_MS', 120_000),
+          this.config.get<string | number>('MSSQL_REQUEST_TIMEOUT_MS', 1_200_000),
         ),
         pool: { max: 2, min: 0, idleTimeoutMillis: 10_000 },
       },

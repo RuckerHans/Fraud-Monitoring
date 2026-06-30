@@ -9,7 +9,7 @@ import {
   useGetBranchesQuery,
   useGetMeQuery,
   useLazyGetMeQuery,
-  useGetTransactionsQuery,
+  useLazyGetTransactionsQuery,
   useLoginMutation,
 } from '@/store/api';
 
@@ -49,9 +49,11 @@ export function Dashboard() {
   const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [queryCancelled, setQueryCancelled] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState('');
   const initializedBranches = useRef(false);
+  const reportRequest = useRef<{ abort: () => void } | null>(null);
   const {
     currentData: currentUser,
     isLoading: checkingSession,
@@ -60,11 +62,10 @@ export function Dashboard() {
   const signedIn = Boolean(currentUser) && !sessionExpired;
   const { data: branches = [], isLoading: loadingBranches, isError: branchError } =
     useGetBranchesQuery(undefined, { skip: !signedIn });
-  const {
-    data: report,
-    isFetching,
-    error: reportError,
-  } = useGetTransactionsQuery(applied!, { skip: !applied || !signedIn });
+  const [
+    loadTransactions,
+    { data: report, isFetching, error: reportError },
+  ] = useLazyGetTransactionsQuery();
   const onlineBranches = useMemo(
     () => branches.filter((branch) => branch.online),
     [branches],
@@ -104,6 +105,8 @@ export function Dashboard() {
     };
   }, [currentUser?.expiresAt, recheckSession]);
 
+  useEffect(() => () => reportRequest.current?.abort(), []);
+
   const stats = useMemo(() => {
     const rows = report?.data ?? [];
     return {
@@ -116,7 +119,7 @@ export function Dashboard() {
   function applyFilters(event: FormEvent) {
     event.preventDefault();
     if (!draft.branchIds.length) return;
-    setApplied({
+    const params: ReportParams = {
       branchIds: draft.branchIds,
       from: draft.from,
       to: draft.to,
@@ -124,7 +127,12 @@ export function Dashboard() {
       pageSize: 50,
       points: draft.points ? (draft.points as ReportParams['points']) : undefined,
       exception: draft.exception,
-    });
+    };
+    reportRequest.current?.abort();
+    setQueryCancelled(false);
+    setNotice('');
+    setApplied(params);
+    reportRequest.current = loadTransactions(params);
   }
 
   async function exportReport() {
@@ -158,7 +166,19 @@ export function Dashboard() {
   }
 
   function changePage(page: number) {
-    if (applied) setApplied({ ...applied, page });
+    if (!applied) return;
+    const params = { ...applied, page };
+    reportRequest.current?.abort();
+    setQueryCancelled(false);
+    setApplied(params);
+    reportRequest.current = loadTransactions(params);
+  }
+
+  function cancelReport() {
+    reportRequest.current?.abort();
+    reportRequest.current = null;
+    setQueryCancelled(true);
+    setNotice('Report request cancelled.');
   }
 
   return (
@@ -281,12 +301,12 @@ export function Dashboard() {
           </button>
         </form>
 
-        {(branchError || reportError || notice || report?.warnings.length) && (
+        {(branchError || (reportError && !queryCancelled) || notice || report?.warnings.length) && (
           <div className="alert">
             {notice ||
               (branchError
                 ? 'The branch directory is unavailable.'
-                : reportError
+                : reportError && !queryCancelled
                   ? requestErrorMessage(reportError)
                   : `${report?.warnings.length} branch${report?.warnings.length === 1 ? '' : 'es'} could not be queried: ${report?.warnings.join(' ')}`)}
           </div>
@@ -380,6 +400,14 @@ export function Dashboard() {
           }}
         />
       )}
+      {isFetching && applied && !queryCancelled && (
+        <ReportLoadingModal
+          branchCount={applied.branchIds.length}
+          from={applied.from}
+          to={applied.to}
+          cancel={cancelReport}
+        />
+      )}
       {checkingSession && !sessionExpired ? (
         <SessionCheck />
       ) : (
@@ -393,6 +421,68 @@ export function Dashboard() {
         )
       )}
     </main>
+  );
+}
+
+function ReportLoadingModal({
+  branchCount,
+  from,
+  to,
+  cancel,
+}: {
+  branchCount: number;
+  from: string;
+  to: string;
+  cancel: () => void;
+}) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - started) / 1_000));
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const elapsed = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(
+    elapsedSeconds % 60,
+  ).padStart(2, '0')}`;
+
+  return (
+    <div className="modal-backdrop query-backdrop">
+      <section
+        className="query-progress-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="query-progress-title"
+      >
+        <div className="query-progress-visual" aria-hidden="true">
+          <span className="query-progress-ring" />
+          <span>FM</span>
+        </div>
+        <p className="eyebrow">Branch report in progress</p>
+        <h2 id="query-progress-title">Reading transaction activity</h2>
+        <p>
+          Processing {branchCount} selected branch{branchCount === 1 ? '' : 'es'} one at a
+          time. Slow local servers may take several minutes.
+        </p>
+        <div className="query-progress-meta">
+          <div>
+            <span>Date range</span>
+            <strong>{from} → {to}</strong>
+          </div>
+          <div>
+            <span>Elapsed</span>
+            <strong>{elapsed}</strong>
+          </div>
+        </div>
+        <div className="query-progress-track"><span /></div>
+        <button type="button" className="query-cancel" onClick={cancel}>
+          Cancel request
+        </button>
+      </section>
+    </div>
   );
 }
 

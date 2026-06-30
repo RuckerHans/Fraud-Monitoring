@@ -211,6 +211,55 @@ tbody tr:hover { background: #fbfcff; }
   display: grid; place-items: center; padding: 20px; z-index: 10;
   backdrop-filter: blur(3px);
 }
+.query-backdrop { background: rgba(12, 22, 43, .62); }
+.query-progress-card {
+  width: min(440px, 100%); padding: 30px; text-align: center;
+  border: 1px solid rgba(255, 255, 255, .7); border-radius: 18px;
+  background: #fff; box-shadow: 0 30px 80px rgba(6, 15, 35, .38);
+}
+.query-progress-visual {
+  width: 64px; height: 64px; position: relative; display: grid; place-items: center;
+  margin: 0 auto 18px; border-radius: 18px; color: #fff;
+  background: linear-gradient(145deg, #2457d6, #14213d);
+  font: 800 12px var(--font-display); box-shadow: 0 12px 25px rgba(36, 87, 214, .24);
+}
+.query-progress-ring {
+  position: absolute; inset: -7px; border: 2px solid #dce6ff;
+  border-top-color: var(--blue); border-radius: 23px;
+  animation: session-spin 1.1s linear infinite;
+}
+.query-progress-card h2 { margin: 0; font: 750 22px var(--font-display); letter-spacing: -.5px; }
+.query-progress-card > p:not(.eyebrow) {
+  max-width: 350px; margin: 9px auto 20px; color: var(--muted);
+  font-size: 12px; line-height: 1.6;
+}
+.query-progress-meta {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 17px;
+}
+.query-progress-meta > div {
+  padding: 10px; text-align: left; border: 1px solid var(--line);
+  border-radius: 9px; background: #f8faff;
+}
+.query-progress-meta span, .query-progress-meta strong { display: block; }
+.query-progress-meta span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .6px; }
+.query-progress-meta strong { margin-top: 4px; font-size: 11px; }
+.query-progress-track {
+  height: 5px; overflow: hidden; border-radius: 5px; background: #e7ecf6;
+}
+.query-progress-track span {
+  display: block; width: 42%; height: 100%; border-radius: 5px;
+  background: linear-gradient(90deg, #2457d6, #7899ed);
+  animation: query-track 1.4s ease-in-out infinite;
+}
+.query-cancel {
+  width: 100%; margin-top: 17px; padding: 10px; border: 1px solid #d5dce8;
+  border-radius: 8px; background: #fff; color: #4b5970; font-size: 11px; font-weight: 750;
+}
+.query-cancel:hover { border-color: #d29b9b; color: #9f3535; background: #fff8f8; }
+@keyframes query-track {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
+}
 .branch-modal {
   width: min(820px, 100%); max-height: min(760px, calc(100vh - 40px));
   overflow-y: auto; position: relative; padding: 25px;

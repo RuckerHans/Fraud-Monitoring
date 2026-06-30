@@ -43,6 +43,7 @@ export const {
   useLazyGetMeQuery,
   useGetBranchesQuery,
   useGetTransactionsQuery,
+  useLazyGetTransactionsQuery,
   useLoginMutation,
 } = api;
 export { baseUrl };
