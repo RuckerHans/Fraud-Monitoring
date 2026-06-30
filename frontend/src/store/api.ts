@@ -40,6 +40,7 @@ export const api = createApi({
 
 export const {
   useGetMeQuery,
+  useLazyGetMeQuery,
   useGetBranchesQuery,
   useGetTransactionsQuery,
   useLoginMutation,

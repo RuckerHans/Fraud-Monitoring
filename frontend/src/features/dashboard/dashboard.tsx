@@ -7,6 +7,7 @@ import {
   baseUrl,
   useGetBranchesQuery,
   useGetMeQuery,
+  useLazyGetMeQuery,
   useGetTransactionsQuery,
   useLoginMutation,
 } from '@/store/api';
@@ -364,6 +365,10 @@ export function Dashboard() {
           <LoginDialog
             close={signedIn ? () => setLoginOpen(false) : undefined}
             message={sessionExpired ? 'Your session expired. Sign in again to continue.' : undefined}
+            authenticated={() => {
+              setSessionExpired(false);
+              setLoginOpen(false);
+            }}
           />
         )
       )}
@@ -533,11 +538,14 @@ function BranchPickerModal({
 function LoginDialog({
   close,
   message,
+  authenticated,
 }: {
   close?: () => void;
   message?: string;
+  authenticated: () => void;
 }) {
   const [login, { isLoading }] = useLoginMutation();
+  const [verifySession, { isFetching: isVerifying }] = useLazyGetMeQuery();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -546,17 +554,25 @@ function LoginDialog({
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    let tokenIssued = false;
     try {
       const result = await login({ username, password }).unwrap();
+      tokenIssued = true;
       const token = authToken(result);
       if (token) {
         window.localStorage.setItem('fraud-monitoring-token', token);
       } else {
         window.localStorage.removeItem('fraud-monitoring-token');
       }
-      window.location.reload();
+      await verifySession().unwrap();
+      authenticated();
     } catch {
-      setError('Sign-in failed. Check your credentials and try again.');
+      window.localStorage.removeItem('fraud-monitoring-token');
+      setError(
+        tokenIssued
+          ? 'Sign-in succeeded but the issued session could not be verified. Restart the backend and try again.'
+          : 'Sign-in failed. Check your credentials and try again.',
+      );
     }
   }
 
@@ -586,7 +602,9 @@ function LoginDialog({
           <span>Show password</span>
         </label>
         {error && <div className="login-error" role="alert">{error}</div>}
-        <button className="primary" disabled={isLoading}>{isLoading ? 'Signing in…' : 'Continue'}</button>
+        <button className="primary" disabled={isLoading || isVerifying}>
+          {isLoading ? 'Signing in…' : isVerifying ? 'Verifying session…' : 'Continue'}
+        </button>
       </form>
     </div>
   );
