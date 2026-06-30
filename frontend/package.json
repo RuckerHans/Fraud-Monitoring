@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev --hostname 0.0.0.0 --port 7070",
-    "start": "next start --port 7070",
+    "dev": "next dev --hostname 0.0.0.0 --port 7071",
+    "start": "next start --port 7071",
     "lint": "eslint .",
     "test": "vitest run --pool=threads --poolOptions.threads.singleThread",
     "typecheck": "tsc --noEmit"

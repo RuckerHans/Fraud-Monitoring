@@ -18,7 +18,7 @@ export class ExternalAuthProvider implements AuthProvider {
       const baseUrl = this.config.getOrThrow<string>('AUTH_SERVICE_URL');
       const response = await firstValueFrom(
         this.http.post(`${baseUrl}/auth/login`, { username, password }, {
-          headers: { 'api-key': this.config.getOrThrow<string>('API_KEY') },
+          headers: { 'x-api-key': this.config.getOrThrow<string>('API_KEY') },
           timeout: 5_000,
         }),
       );

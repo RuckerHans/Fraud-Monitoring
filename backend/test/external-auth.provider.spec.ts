@@ -55,7 +55,7 @@ describe('ExternalAuthProvider', () => {
     expect(post).toHaveBeenCalledWith(
       'http://auth.example/auth/login',
       { username: 'auditor', password: 'password' },
-      expect.objectContaining({ headers: { 'api-key': 'test-api-key' } }),
+      expect.objectContaining({ headers: { 'x-api-key': 'test-api-key' } }),
     );
   });
 });

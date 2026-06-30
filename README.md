@@ -39,7 +39,7 @@ npm run dev --workspace frontend
 
 Open:
 
-- Dashboard: `http://localhost:7070`
+- Dashboard: `http://localhost:7071`
 - Swagger: `http://localhost:6060/docs`
 - Health: `http://localhost:6060/api/health`
 
@@ -72,7 +72,7 @@ Dates are inclusive calendar dates. The query applies `LogDate >= from AND LogDa
 ## Security and operational behavior
 
 - Every branch query is read-only and uses fixed SQL with driver-bound parameters.
-- The backend sends `API_KEY` as the `api-key` header to the branch directory and auth services. It is never exposed through `NEXT_PUBLIC_*` or browser requests.
+- The backend sends `API_KEY` as `x-api-key` to the auth service and as `api-key` to the branch directory. It is never exposed through `NEXT_PUBLIC_*` or browser requests.
 - Guarded endpoints verify JWT signatures with `JWT_SECRET`, allow only HS256, and require a valid `exp` claim. Optional `JWT_ISSUER` and `JWT_AUDIENCE` values tighten claim validation when supplied.
 - Use a least-privilege MSSQL login whose only permissions are `SELECT` on required objects. Application code cannot compensate for an over-privileged DB account.
 - Connection and query timeouts fail fast. Errors returned to the browser never include hostnames, usernames, passwords, or driver details.

@@ -11,7 +11,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.use(helmet());
   app.enableCors({
-    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:7070',
+    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:7071',
     credentials: true,
   });
   app.setGlobalPrefix('api');
