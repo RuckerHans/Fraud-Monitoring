@@ -84,7 +84,8 @@ Pagination uses `ROW_NUMBER()` rather than `OFFSET/FETCH` for compatibility with
 - Use a least-privilege MSSQL login whose only permissions are `SELECT` on required objects. Application code cannot compensate for an over-privileged DB account.
 - Connection and query timeouts fail fast. Errors returned to the browser never include hostnames, usernames, passwords, or driver details.
 - Pino logs redact authorization, cookies, passwords, and branch credential field names.
-- Branch-triggering routes are rate limited.
+- Transaction reports allow 120 requests per minute so the UI can fan out across
+  the supported 100 selected branches; exports remain limited to 5 per minute.
 - XLSX strings beginning with spreadsheet formula characters are neutralized.
 - CORS is restricted to `FRONTEND_ORIGIN`; Helmet is enabled.
 - Query audit events include branch ID, date range, external username, duration, and row count, but no credentials.
