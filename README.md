@@ -45,6 +45,8 @@ Open:
 
 The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
 
+`FRONTEND_ORIGINS` is a comma-separated CORS allowlist, for example `http://localhost:7071,http://192.168.0.81:7071`. Wildcard origins are not used because credentialed requests are enabled.
+
 Development containers:
 
 ```powershell

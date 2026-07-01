@@ -8,10 +8,18 @@ import { SafeExceptionFilter } from './common/safe-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const allowedOrigins = (
+    process.env.FRONTEND_ORIGINS ??
+    process.env.FRONTEND_ORIGIN ??
+    'http://localhost:7071'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   app.useLogger(app.get(Logger));
   app.use(helmet());
   app.enableCors({
-    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:7071',
+    origin: allowedOrigins,
     credentials: true,
   });
   app.setGlobalPrefix('api');
