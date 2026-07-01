@@ -520,8 +520,8 @@ function ReportLoadingModal({
         <p className="eyebrow">Branch report in progress</p>
         <h2 id="query-progress-title">Reading transaction activity</h2>
         <p>
-          Processing {branchCount} selected branch{branchCount === 1 ? '' : 'es'} one at a
-          time. Slow local servers may take several minutes.
+          Querying {branchCount} selected branch{branchCount === 1 ? '' : 'es'} in
+          parallel. Slow local servers may take several minutes.
         </p>
         <div className="query-progress-meta">
           <div>
@@ -611,7 +611,7 @@ function BranchPickerModal({
             <span className="mode-icon">▦</span>
             <span>
               <strong>All online branches</strong>
-              <small>Load all {onlineBranches.length} reporting locations sequentially.</small>
+              <small>Query all {onlineBranches.length} reporting locations in parallel.</small>
             </span>
             {mode === 'all' && <b aria-hidden="true">✓</b>}
           </button>

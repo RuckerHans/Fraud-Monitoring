@@ -13,7 +13,7 @@ Browser (Next.js)
                                        └─> One selected MSSQL branch (short-lived)
 ```
 
-The public branch list is cached for two minutes by default after credentials have been removed. Branches are labeled with `branchlocation`, sorted alphabetically, and locations ending in `_FC` are excluded. Report requests resolve only the explicitly selected online branches, then process them sequentially: initialize one dynamic TypeORM `DataSource`, execute fixed parameterized SQL, destroy it in `finally`, and continue to the next selection. There is no concurrent connection fan-out and no boot-time database connection.
+The public branch list is cached for two minutes by default after credentials have been removed. Branches are labeled with `branchlocation`, sorted alphabetically, and locations ending in `_FC` are excluded. The web app sends one report request per selected branch concurrently, merges successful responses, and presents failed branches as warnings. Each request initializes one dynamic TypeORM `DataSource`, executes fixed parameterized SQL, and destroys it in `finally`. There is no boot-time database connection.
 
 ## Repository
 
@@ -100,7 +100,7 @@ Two details cannot be finalized without the live contracts:
 
 The auth implementation remains behind `AuthProvider`. `LocalAuthProvider` performs a parameterized, read-only lookup against `monitoring_auth`, issues an HS256 JWT, and cryptographically verifies bearer tokens on every guarded request. The application does not create, migrate, or write authentication tables.
 
-`branchIds` is a comma-separated list and is capped at 100 explicit selections. “Select all online” simply fills that explicit selection; the backend still queries branches sequentially. The branch port defaults to `1433`, and `branchserverport` is honored if the directory returns it.
+`branchIds` accepts a comma-separated list and is capped at 100 explicit selections. The web app intentionally sends a separate GET for every selected branch (for example `branchIds=29`, `branchIds=31`, and `branchIds=32`) so those branch queries can run concurrently. The backend retains comma-separated support for direct API clients. The branch port defaults to `1433`, and `branchserverport` is honored if the directory returns it.
 
 ## Verification
 
