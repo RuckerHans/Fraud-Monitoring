@@ -177,11 +177,55 @@ input:focus, select:focus { border-color: #7897e6; box-shadow: 0 0 0 3px #eaf0ff
 .stats small, .stats strong { display: block; }
 .stats small { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
 .stats strong { font: 750 21px var(--font-display); }
-.table-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.table-heading { padding: 20px 22px; display: flex; justify-content: space-between; align-items: center; }
-.table-heading h2 { font: 750 17px var(--font-display); margin: 0; }
-.table-heading p { color: var(--muted); font-size: 12px; margin: 5px 0 0; }
-.querying { color: var(--blue); font-size: 12px; }
+.results-section { margin-top: 4px; }
+.results-heading {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin: 0 2px 12px;
+}
+.results-heading h2 { margin: 0; font: 750 17px var(--font-display); }
+.results-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+.results-heading > span {
+  padding: 6px 9px; border: 1px solid #dce3ee; border-radius: 20px;
+  color: #53627a; background: #f8faff; font-size: 9px; font-weight: 700;
+}
+.branch-results { display: grid; gap: 15px; }
+.branch-result-card {
+  overflow: hidden; border: 1px solid #dfe4ed; border-radius: 14px;
+  background: #fff; box-shadow: 0 8px 24px rgba(25, 38, 68, .045);
+}
+.branch-result-header {
+  min-height: 70px; display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 13px 17px; border-bottom: 1px solid #e4e8ef;
+  background: linear-gradient(100deg, #f8faff 0%, #fff 72%);
+}
+.branch-result-identity { display: flex; align-items: center; gap: 11px; }
+.branch-result-identity > span {
+  width: 39px; height: 39px; display: grid; place-items: center;
+  border-radius: 10px; color: #fff; background: linear-gradient(145deg, #2457d6, #172554);
+  font: 800 10px var(--font-display); letter-spacing: .4px;
+}
+.branch-result-identity small {
+  display: block; color: var(--blue); font-size: 9px; font-weight: 800; letter-spacing: .8px;
+}
+.branch-result-identity h3 { margin: 3px 0 0; font: 750 14px var(--font-display); }
+.branch-result-metrics { display: flex; align-items: center; gap: 6px; }
+.branch-result-metrics > span {
+  padding: 6px 9px; border-radius: 8px; color: #59667a;
+  background: #eef2f7; font-size: 9px; white-space: nowrap;
+}
+.branch-result-metrics > span.return { color: #8c550b; background: #fff2db; }
+.branch-result-metrics > span.void { color: #a23131; background: #ffebeb; }
+.branch-result-metrics strong { margin-right: 2px; font-size: 11px; }
+.results-empty {
+  padding: 48px 20px; text-align: center; border: 1px dashed #d7deea;
+  border-radius: 14px; background: rgba(255, 255, 255, .65);
+}
+.results-empty > span {
+  width: 38px; height: 38px; display: grid; place-items: center; margin: 0 auto 10px;
+  border-radius: 10px; color: #687b9c; background: #e9eef7; font-size: 19px;
+}
+.results-empty strong { display: block; font: 750 13px var(--font-display); }
+.results-empty p { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 th {
@@ -201,8 +245,11 @@ tbody tr:hover { background: #fbfcff; }
 .badge.clear { color: #317056; background: #e8f6ef; }
 .earned { color: #39765b; }
 .redeemed { color: #a94848; }
-.empty { text-align: center; padding: 55px; color: var(--muted); }
-.pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; color: var(--muted); font-size: 12px; }
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14px; padding: 12px 15px; border: 1px solid var(--line);
+  border-radius: 10px; background: #fff; color: var(--muted); font-size: 11px;
+}
 .pagination button { background: #fff; border: 1px solid var(--line); padding: 7px 11px; }
 .pagination button:first-child { border-radius: 7px 0 0 7px; }
 .pagination button:last-child { border-radius: 0 7px 7px 0; }
@@ -336,4 +383,7 @@ tbody tr:hover { background: #fbfcff; }
   .branch-modal { padding: 20px 16px; }
   .branch-modal-footer { align-items: stretch; flex-direction: column; }
   .branch-modal-footer > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .results-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .branch-result-header { align-items: flex-start; flex-direction: column; }
+  .branch-result-metrics { width: 100%; flex-wrap: wrap; }
 }

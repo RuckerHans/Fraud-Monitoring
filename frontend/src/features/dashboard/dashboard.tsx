@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { yesterday } from '@/lib/dates';
-import type { Branch, ReportParams } from '@/lib/types';
+import type { Branch, ReportParams, Transaction } from '@/lib/types';
 import {
   baseUrl,
   useGetBranchesQuery,
@@ -114,6 +114,30 @@ export function Dashboard() {
       voided: rows.filter((row) => row.voided).length,
       points: rows.reduce((sum, row) => sum + row.pointsRedeemed, 0),
     };
+  }, [report]);
+  const groupedResults = useMemo(() => {
+    const groups = new Map<string, {
+      branchId: string;
+      branchCode: string;
+      branchLocation: string;
+      rows: Transaction[];
+    }>();
+    for (const row of report?.data ?? []) {
+      const group = groups.get(row.branchId);
+      if (group) {
+        group.rows.push(row);
+      } else {
+        groups.set(row.branchId, {
+          branchId: row.branchId,
+          branchCode: row.branchCode,
+          branchLocation: row.branchLocation,
+          rows: [row],
+        });
+      }
+    }
+    return [...groups.values()].sort((left, right) =>
+      left.branchLocation.localeCompare(right.branchLocation),
+    );
   }, [report]);
 
   function applyFilters(event: FormEvent) {
@@ -331,53 +355,85 @@ export function Dashboard() {
           </article>
         </section>
 
-        <section className="table-card">
-          <div className="table-heading">
+        <section className="results-section">
+          <div className="results-heading">
             <div>
-              <h2>Transactions</h2>
+              <h2>Transaction results</h2>
               <p>
                 {selectedBranches.length
-                  ? `${selectedBranches.length} branch${selectedBranches.length > 1 ? 'es' : ''} · ${draft.from} to ${draft.to}`
+                  ? `${selectedBranches.length} selected branch${selectedBranches.length > 1 ? 'es' : ''} · ${draft.from} to ${draft.to}`
                   : 'Choose one or more branches to begin'}
               </p>
             </div>
-            {isFetching && <span className="querying">Reading branch…</span>}
+            {report?.data.length ? (
+              <span>{groupedResults.length} branch group{groupedResults.length === 1 ? '' : 's'} on this page</span>
+            ) : null}
           </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Branch</th><th>Transaction</th><th>Customer</th><th>Amount</th><th>Date & time</th>
-                  <th>Cashier / terminal</th><th>Status</th><th>Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!report?.data.length ? (
-                  <tr><td colSpan={8} className="empty">No results to display.</td></tr>
-                ) : report.data.map((row) => (
-                  <tr key={`${row.branchId}-${row.transactionNo}`}>
-                    <td><strong>{row.branchLocation}</strong> <span className="muted">{row.branchCode}</span></td>
-                    <td className="mono">{row.transactionNo}</td>
-                    <td>{row.customerName || row.customerCode || 'Walk-in'}</td>
-                    <td className="amount">{money.format(row.amount)}</td>
-                    <td>{new Date(row.logDate).toLocaleString('en-PH')}</td>
-                    <td>{row.userId || '—'} <span className="muted">/ {row.terminalNo || '—'}</span></td>
-                    <td>
-                      <div className="badges">
-                        {row.returned && <span className="badge return">Returned</span>}
-                        {row.voided && <span className="badge void">Voided</span>}
-                        {!row.returned && !row.voided && <span className="badge clear">Clear</span>}
+
+          {!groupedResults.length ? (
+            <div className="results-empty">
+              <span aria-hidden="true">⌕</span>
+              <strong>No results to display</strong>
+              <p>Run a report to view returned and voided transactions grouped by branch.</p>
+            </div>
+          ) : (
+            <div className="branch-results">
+              {groupedResults.map((group) => {
+                const returnCount = group.rows.filter((row) => row.returned).length;
+                const voidCount = group.rows.filter((row) => row.voided).length;
+                return (
+                  <article className="branch-result-card" key={group.branchId}>
+                    <header className="branch-result-header">
+                      <div className="branch-result-identity">
+                        <span aria-hidden="true">{group.branchCode.slice(0, 2)}</span>
+                        <div>
+                          <small>{group.branchCode}</small>
+                          <h3>{group.branchLocation}</h3>
+                        </div>
                       </div>
-                    </td>
-                    <td>
-                      <span className="earned">+{row.pointsEarned}</span>
-                      <span className="redeemed"> −{row.pointsRedeemed}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="branch-result-metrics">
+                        <span><strong>{group.rows.length}</strong> records</span>
+                        <span className="return"><strong>{returnCount}</strong> returned</span>
+                        <span className="void"><strong>{voidCount}</strong> voided</span>
+                      </div>
+                    </header>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Transaction</th><th>Customer</th><th>Amount</th><th>Date & time</th>
+                            <th>Cashier / terminal</th><th>Status</th><th>Points</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.rows.map((row) => (
+                            <tr key={`${row.branchId}-${row.transactionNo}`}>
+                              <td className="mono">{row.transactionNo}</td>
+                              <td>{row.customerName || row.customerCode || 'Walk-in'}</td>
+                              <td className="amount">{money.format(row.amount)}</td>
+                              <td>{new Date(row.logDate).toLocaleString('en-PH')}</td>
+                              <td>{row.userId || '—'} <span className="muted">/ {row.terminalNo || '—'}</span></td>
+                              <td>
+                                <div className="badges">
+                                  {row.returned && <span className="badge return">Returned</span>}
+                                  {row.voided && <span className="badge void">Voided</span>}
+                                  {!row.returned && !row.voided && <span className="badge clear">Clear</span>}
+                                </div>
+                              </td>
+                              <td>
+                                <span className="earned">+{row.pointsEarned}</span>
+                                <span className="redeemed"> −{row.pointsRedeemed}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
           {report && report.meta.totalPages > 1 && (
             <div className="pagination">
               <span>Page {report.meta.page} of {report.meta.totalPages}</span>
