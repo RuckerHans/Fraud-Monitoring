@@ -145,6 +145,9 @@ export function Dashboard() {
     if (!draft.branchIds.length) return;
     const params: ReportParams = {
       branchIds: draft.branchIds,
+      branchLocations: Object.fromEntries(
+        selectedBranches.map((branch) => [branch.id, branch.location]),
+      ),
       from: draft.from,
       to: draft.to,
       page: 1,
@@ -166,7 +169,10 @@ export function Dashboard() {
     try {
       const params = new URLSearchParams();
       Object.entries(applied).forEach(([key, value]) => {
-        if (value !== undefined && !['page', 'pageSize'].includes(key)) {
+        if (
+          value !== undefined &&
+          !['page', 'pageSize', 'branchLocations'].includes(key)
+        ) {
           params.set(key, Array.isArray(value) ? value.join(',') : String(value));
         }
       });

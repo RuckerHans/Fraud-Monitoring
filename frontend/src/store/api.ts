@@ -5,6 +5,12 @@ import type { AuthenticatedUser, Branch, ReportParams, ReportResponse } from '@/
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 function errorMessage(error: FetchBaseQueryError): string {
+  if (error.status === 'PARSING_ERROR') {
+    const response = typeof error.data === 'string' ? error.data.trim() : '';
+    return response && response.length <= 120
+      ? response
+      : 'The branch server returned an invalid response.';
+  }
   if ('data' in error && error.data && typeof error.data === 'object') {
     const message = (error.data as { message?: string | string[] }).message;
     if (Array.isArray(message)) return message.join(' ');
@@ -38,7 +44,12 @@ export const api = createApi({
       providesTags: ['Branches'],
     }),
     getTransactions: builder.query<ReportResponse, ReportParams>({
-      async queryFn({ branchIds, ...params }, _queryApi, _extraOptions, fetchWithBQ) {
+      async queryFn(
+        { branchIds, branchLocations, ...params },
+        _queryApi,
+        _extraOptions,
+        fetchWithBQ,
+      ) {
         const results = await Promise.all(
           branchIds.map(async (branchId) => ({
             branchId,
@@ -56,7 +67,8 @@ export const api = createApi({
         for (const { branchId, result } of results) {
           if (result.error) {
             firstError ??= result.error;
-            warnings.push(`Branch ${branchId}: ${errorMessage(result.error)}`);
+            const branchLocation = branchLocations?.[branchId] ?? `Branch ${branchId}`;
+            warnings.push(`${branchLocation}: ${errorMessage(result.error)}`);
             continue;
           }
           const response = result.data as ReportResponse;

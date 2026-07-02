@@ -39,6 +39,7 @@ export interface ReportResponse {
 
 export interface ReportParams {
   branchIds: string[];
+  branchLocations?: Record<string, string>;
   from: string;
   to: string;
   page: number;
