@@ -50,7 +50,9 @@ same-origin `/api` path, and Next.js proxies it server-side to
 `BACKEND_API_URL` (`http://127.0.0.1:6060` for separate local npm processes).
 This allows a remote user to access the complete application through the
 forwarded frontend port `7071` without exposing backend port `6060`. For
-Docker, Compose targets the backend service as `http://backend:6060`.
+Docker, Compose targets the backend service as `http://backend:6060`. The
+Next.js proxy timeout is 31 minutes so it exceeds the backend's maximum
+10-minute MSSQL connection wait plus 20-minute query timeout.
 
 Development containers:
 
