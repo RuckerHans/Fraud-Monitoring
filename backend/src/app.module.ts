@@ -11,7 +11,14 @@ import { validateEnvironment } from './config/environment';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // npm workspace scripts run with backend/ as the working directory.
+      // Prefer a backend-specific file when present, then use the repository
+      // root file used by Docker Compose and documented local setup.
+      envFilePath: ['.env', '../.env'],
+      validate: validateEnvironment,
+    }),
     LoggerModule.forRoot({
       pinoHttp: {
         redact: {
