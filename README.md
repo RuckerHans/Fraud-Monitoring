@@ -39,13 +39,13 @@ npm run dev --workspace frontend
 
 Open:
 
-- Dashboard: `http://localhost:7071`
-- Swagger: `http://localhost:6060/docs`
-- Health: `http://localhost:6060/api/health`
+- Dashboard: `http://192.168.68.101:7071`
+- Swagger: `http://192.168.68.101:6060/docs`
+- Health: `http://192.168.68.101:6060/api/health`
 
 The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
 
-`FRONTEND_ORIGINS` is a comma-separated CORS allowlist, for example `http://localhost:7071,http://192.168.0.81:7071`. Wildcard origins are not used because credentialed requests are enabled.
+`FRONTEND_ORIGINS` is a comma-separated CORS allowlist, for example `http://localhost:7071,http://192.168.68.101:7071`. `NEXT_PUBLIC_API_URL` must use an address reachable by the browser, not `localhost` when the dashboard is opened from another computer. For local non-Docker development, place that public value in `frontend/.env.local`; it is intentionally ignored by Git. Wildcard origins are not used because credentialed requests are enabled.
 
 Development containers:
 

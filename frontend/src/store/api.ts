@@ -2,7 +2,11 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { AuthenticatedUser, Branch, ReportParams, ReportResponse } from '@/lib/types';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6060/api';
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window === 'undefined'
+    ? 'http://localhost:6060/api'
+    : `${window.location.protocol}//${window.location.hostname}:6060/api`);
 
 function errorMessage(error: FetchBaseQueryError): string {
   if ('data' in error && error.data && typeof error.data === 'object') {
