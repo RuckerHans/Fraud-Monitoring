@@ -45,7 +45,12 @@ Open:
 
 The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
 
-`FRONTEND_ORIGINS` is a comma-separated CORS allowlist. `NEXT_PUBLIC_API_URL` is configured as `http://192.168.0.52:6060/api` and must use an address reachable by the browser, not the browser device's `localhost`. For local non-Docker development, place that public value in `frontend/.env.local`; it is intentionally ignored by Git. Wildcard origins are not used because credentialed requests are enabled.
+`FRONTEND_ORIGINS` is a comma-separated CORS allowlist. The browser uses the
+same-origin `/api` path, and Next.js proxies it server-side to
+`BACKEND_API_URL` (`http://127.0.0.1:6060` for separate local npm processes).
+This allows a remote user to access the complete application through the
+forwarded frontend port `7071` without exposing backend port `6060`. For
+Docker, Compose targets the backend service as `http://backend:6060`.
 
 Development containers:
 
