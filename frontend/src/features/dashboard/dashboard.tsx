@@ -148,6 +148,13 @@ export function Dashboard() {
       left.branchLocation.localeCompare(right.branchLocation),
     );
   }, [report]);
+  const hasReportWarnings = Boolean(report?.warnings.length);
+  const showAlert = Boolean(
+    branchError ||
+    (reportError && !queryCancelled) ||
+    notice ||
+    hasReportWarnings,
+  );
 
   function applyFilters(event: FormEvent) {
     event.preventDefault();
@@ -340,7 +347,7 @@ export function Dashboard() {
           </button>
         </form>
 
-        {(branchError || (reportError && !queryCancelled) || notice || Boolean(report?.warnings.length)) && (
+        {showAlert && (
           <div className="alert">
             {notice ||
               (branchError
