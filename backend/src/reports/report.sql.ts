@@ -18,7 +18,7 @@ Filtered AS (
     ft.CustomerCode AS customerCode,
     COALESCE(NULLIF(ft.Description, ''), ft.CustomerCode) AS customerName,
     ft.GrandTotal AS amount,
-    ft.LogDate AS logDate,
+    ft.DateTime AS logDate,
     ft.UserID AS userId,
     ft.TerminalNo AS terminalNo,
     CAST(ISNULL(ss.Returned, 0) AS bit) AS returned,
