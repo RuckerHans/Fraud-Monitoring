@@ -4,7 +4,7 @@ import { createPool, type Pool, type RowDataPacket } from 'mysql2/promise';
 import { DatacenterBranch } from '../branches/branch.types';
 
 interface AuditApproverRow extends RowDataPacket {
-  TransactionNo: string | null;
+  transactionNo: string | null;
   approverName: string | null;
   approverUserId: string | null;
 }
@@ -17,7 +17,9 @@ export class BranchAuditTrailService {
     branch: DatacenterBranch,
     transactionNumbers: string[],
   ): Promise<Map<string, string>> {
-    const uniqueNumbers = [...new Set(transactionNumbers.filter(Boolean))];
+    const uniqueNumbers = [
+      ...new Set(transactionNumbers.map((value) => this.transactionKey(value)).filter(Boolean)),
+    ];
     const approvers = new Map<string, string>();
     if (uniqueNumbers.length === 0) return approvers;
 
@@ -28,11 +30,11 @@ export class BranchAuditTrailService {
         const [rows] = await pool.query<AuditApproverRow[]>(
           `
             SELECT
-              TransactionNo,
+              CAST(TransactionNo AS CHAR) AS transactionNo,
               NULLIF(TRIM(name), '') AS approverName,
               NULLIF(TRIM(UserID), '') AS approverUserId
             FROM audit_trail
-            WHERE TransactionNo IN (${placeholders})
+            WHERE CAST(TransactionNo AS CHAR) IN (${placeholders})
               AND LOWER(COALESCE(description, '')) LIKE '%oic approval%'
             ORDER BY datetime DESC, id DESC
           `,
@@ -40,7 +42,7 @@ export class BranchAuditTrailService {
         );
 
         for (const row of rows) {
-          const transactionNo = row.TransactionNo?.trim();
+          const transactionNo = this.transactionKey(row.transactionNo);
           if (!transactionNo || approvers.has(transactionNo)) continue;
           const approver = row.approverName?.trim() || row.approverUserId?.trim();
           if (approver) approvers.set(transactionNo, approver);
@@ -67,6 +69,10 @@ export class BranchAuditTrailService {
         this.config.get<string | number>('BRANCH_AUDIT_MYSQL_CONNECT_TIMEOUT_MS', 30_000),
       ),
     });
+  }
+
+  private transactionKey(value: string | null | undefined): string {
+    return value?.trim() ?? '';
   }
 
   private chunks<T>(items: T[], size: number): T[][] {

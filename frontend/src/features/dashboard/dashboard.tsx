@@ -340,7 +340,7 @@ export function Dashboard() {
           </button>
         </form>
 
-        {(branchError || (reportError && !queryCancelled) || notice || report?.warnings.length) && (
+        {(branchError || (reportError && !queryCancelled) || notice || Boolean(report?.warnings.length)) && (
           <div className="alert">
             {notice ||
               (branchError

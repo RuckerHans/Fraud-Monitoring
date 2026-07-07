@@ -178,6 +178,14 @@ export class ReportsService {
         branch,
         normalized.map((row) => row.transactionNo),
       );
+      if (approvers.size === 0) {
+        this.logger.info({
+          event: 'branch_audit_no_approvers',
+          branchId: String(branch.id),
+          branchLocation: branch.branchlocation || branch.branchcode,
+          transactionCount: normalized.length,
+        });
+      }
       return normalized.map((row) => ({
         ...row,
         approver: approvers.get(row.transactionNo) ?? null,
