@@ -193,7 +193,7 @@ export class ReportsService {
           0,
         ),
         paymentTotal: payments
-          .filter((payment) => !payment.change && !payment.voided)
+          .filter((payment) => !payment.voided && payment.amount > 0)
           .reduce((sum, payment) => sum + payment.amount, 0),
       },
     };
