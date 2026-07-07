@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { BranchesService } from '../branches/branches.service';
+import { BranchAuditTrailService } from './branch-audit-trail.service';
 import { BranchConnectionFactory } from './branch-connection.factory';
 import { ExportQueryDto, ReportQueryDto } from './report-query.dto';
 import { REPORT_COUNT_SQL, REPORT_EXPORT_SQL, REPORT_PAGE_SQL } from './report.sql';
@@ -18,6 +19,7 @@ export class ReportsService {
   constructor(
     private readonly branches: BranchesService,
     private readonly connections: BranchConnectionFactory,
+    private readonly auditTrail: BranchAuditTrailService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(ReportsService.name);
@@ -50,7 +52,7 @@ export class ReportsService {
         );
         successfulBranches += 1;
         total += Number(countRows[0]?.total ?? 0);
-        rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+        rows.push(...(await this.normalizeRows(branchRows, branch)));
         this.logQuery('branch_query', branch, query, user, started, branchRows.length);
       } catch (error) {
         const reason = this.branchFailureReason(error);
@@ -100,7 +102,7 @@ export class ReportsService {
           source.query(REPORT_EXPORT_SQL, this.params(query)),
         );
         successfulBranches += 1;
-        rows.push(...branchRows.map((row: unknown) => this.normalize(row, branch)));
+        rows.push(...(await this.normalizeRows(branchRows, branch)));
         this.logQuery('branch_export', branch, query, user, started, branchRows.length);
       } catch {
         this.logger.warn({
@@ -155,12 +157,39 @@ export class ReportsService {
       branchCode: branch.branchcode,
       branchLocation: branch.branchlocation || branch.branchcode,
       transactionNo: String(row.transactionNo),
+      approver: row.approver ?? null,
       amount: Number(row.amount ?? 0),
       returned: Boolean(row.returned),
       voided: Boolean(row.voided),
       pointsEarned: Number(row.pointsEarned ?? 0),
       pointsRedeemed: Number(row.pointsRedeemed ?? 0),
     };
+  }
+
+  private async normalizeRows(
+    rows: unknown[],
+    branch: DatacenterBranch,
+  ): Promise<FraudReportRow[]> {
+    const normalized = rows.map((row: unknown) => this.normalize(row, branch));
+    if (normalized.length === 0) return normalized;
+
+    try {
+      const approvers = await this.auditTrail.approversByTransaction(
+        branch,
+        normalized.map((row) => row.transactionNo),
+      );
+      return normalized.map((row) => ({
+        ...row,
+        approver: approvers.get(row.transactionNo) ?? null,
+      }));
+    } catch (error) {
+      this.logger.warn({
+        event: 'branch_audit_lookup_failed',
+        branchId: String(branch.id),
+        databaseError: this.databaseErrorForLog(error),
+      });
+      return normalized;
+    }
   }
 
   private compareRows(left: FraudReportRow, right: FraudReportRow): number {

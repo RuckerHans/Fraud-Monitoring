@@ -43,7 +43,7 @@ Open:
 - Swagger: `http://192.168.0.52:6060/docs`
 - Health: `http://192.168.0.52:6060/api/health`
 
-The local `.env` contains service endpoints, application secrets, and behavior settings and is ignored by Git and Docker build contexts. Never add branch DB credentials to it.
+The local `.env` contains service endpoints, application secrets, branch audit MySQL credentials, and behavior settings and is ignored by Git and Docker build contexts. MSSQL report credentials still come from the datacenter branch directory per selected branch.
 
 `FRONTEND_ORIGINS` is a comma-separated CORS allowlist. The browser uses the
 same-origin `/api` path, and Next.js proxies it server-side to

@@ -19,6 +19,7 @@ export interface Transaction {
   transactionNo: string;
   customerCode: string | null;
   customerName: string | null;
+  approver: string | null;
   amount: number;
   logDate: string;
   userId: string | null;

@@ -5,6 +5,7 @@ export interface FraudReportRow {
   transactionNo: string;
   customerCode: string | null;
   customerName: string | null;
+  approver: string | null;
   amount: number;
   logDate: Date | string;
   userId: string | null;

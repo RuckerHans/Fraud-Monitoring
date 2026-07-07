@@ -11,7 +11,7 @@ export class ExcelExportService {
     const sheet = workbook.addWorksheet('Transactions', {
       views: [{ state: 'frozen', ySplit: 1 }],
     });
-    sheet.autoFilter = 'A1:O1';
+    sheet.autoFilter = 'A1:P1';
     sheet.columns = [
       { header: 'Branch Code', key: 'branchCode', width: 14 },
       { header: 'Branch Location', key: 'branchLocation', width: 24 },
@@ -19,6 +19,7 @@ export class ExcelExportService {
       { header: 'Transaction No.', key: 'transactionNo', width: 20 },
       { header: 'Customer Code', key: 'customerCode', width: 18 },
       { header: 'Customer Name', key: 'customerName', width: 28 },
+      { header: 'Approver', key: 'approver', width: 22 },
       { header: 'Amount', key: 'amount', width: 15, style: { numFmt: '#,##0.00' } },
       { header: 'Log Date', key: 'logDate', width: 22, style: { numFmt: 'yyyy-mm-dd hh:mm' } },
       { header: 'Cashier', key: 'userId', width: 16 },
@@ -37,6 +38,7 @@ export class ExcelExportService {
         transactionNo: this.safeText(row.transactionNo),
         customerCode: this.safeText(row.customerCode),
         customerName: this.safeText(row.customerName),
+        approver: this.safeText(row.approver),
         voidRemarks: this.safeText(row.voidRemarks),
         logDate: new Date(row.logDate),
         returned: row.returned ? 'Yes' : 'No',

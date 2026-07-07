@@ -36,6 +36,15 @@ function requestErrorMessage(error: unknown): string | undefined {
   return 'The report request failed. Check branch connectivity and try again.';
 }
 
+function meaningfulText(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed !== '0' ? trimmed : '';
+}
+
+function displayCustomer(row: Transaction): string {
+  return meaningfulText(row.customerName) || meaningfulText(row.customerCode) || 'Walk-in';
+}
+
 export function Dashboard() {
   const defaultDate = yesterday();
   const [draft, setDraft] = useState({
@@ -407,7 +416,7 @@ export function Dashboard() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Transaction</th><th>Customer</th><th>Amount</th><th>Date & time</th>
+                            <th>Transaction</th><th>Customer</th><th>Approver</th><th>Amount</th><th>Date & time</th>
                             <th>Cashier / terminal</th><th>Status</th><th>Points</th>
                           </tr>
                         </thead>
@@ -415,7 +424,8 @@ export function Dashboard() {
                           {group.rows.map((row) => (
                             <tr key={`${row.branchId}-${row.transactionNo}`}>
                               <td className="mono">{row.transactionNo}</td>
-                              <td>{row.customerName || row.customerCode || 'Walk-in'}</td>
+                              <td>{displayCustomer(row)}</td>
+                              <td>{meaningfulText(row.approver) || <span className="muted">—</span>}</td>
                               <td className="amount">{money.format(row.amount)}</td>
                               <td>{new Date(row.logDate).toLocaleString('en-PH')}</td>
                               <td>{row.userId || '—'} <span className="muted">/ {row.terminalNo || '—'}</span></td>
@@ -427,8 +437,14 @@ export function Dashboard() {
                                 </div>
                               </td>
                               <td>
-                                <span className="earned">+{row.pointsEarned}</span>
-                                <span className="redeemed"> −{row.pointsRedeemed}</span>
+                                {row.pointsEarned || row.pointsRedeemed ? (
+                                  <>
+                                    {row.pointsEarned ? <span className="earned">+{row.pointsEarned}</span> : null}
+                                    {row.pointsRedeemed ? <span className="redeemed"> −{row.pointsRedeemed}</span> : null}
+                                  </>
+                                ) : (
+                                  <span className="muted">—</span>
+                                )}
                               </td>
                             </tr>
                           ))}

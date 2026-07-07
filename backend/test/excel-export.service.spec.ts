@@ -11,6 +11,7 @@ describe('ExcelExportService', () => {
         transactionNo: '=1+1',
         customerCode: 'C1',
         customerName: 'Customer',
+        approver: 'manager',
         amount: 123.45,
         logDate: '2026-01-02T10:00:00',
         userId: 'cashier',
@@ -27,6 +28,6 @@ describe('ExcelExportService', () => {
     await workbook.xlsx.load(buffer as any);
     const sheet = workbook.getWorksheet('Transactions');
     expect(sheet?.getCell('D2').value).toBe("'=1+1");
-    expect(sheet?.autoFilter).toBe('A1:O1');
+    expect(sheet?.autoFilter).toBe('A1:P1');
   });
 });
