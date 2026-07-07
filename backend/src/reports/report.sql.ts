@@ -94,3 +94,88 @@ export const REPORT_EXPORT_SQL = `${REPORT_CTE}
 SELECT TOP (50000) *
 FROM Filtered
 ORDER BY logDate DESC, transactionNo DESC;`;
+
+export const RECEIPT_HEADER_SQL = `
+SELECT TOP (1)
+  ft.TransactionNo AS transactionNo,
+  ft.CustomerCode AS customerCode,
+  COALESCE(NULLIF(ft.Description, ''), ft.CustomerCode) AS customerName,
+  ft.SubTotal AS subTotal,
+  ft.GrandTotal AS grandTotal,
+  ft.DownPayments AS downPayments,
+  ft.Discount AS discount,
+  ft.AmountDiscounted AS amountDiscounted,
+  ft.Allowance AS allowance,
+  ft.ReturnSubtotal AS returnSubtotal,
+  ft.UserID AS userId,
+  ft.TerminalNo AS terminalNo,
+  ft.Shift AS shift,
+  ft.LogDate AS logDate,
+  ft.DateTime AS dateTime,
+  ft.BranchCode AS branchCodeFromTransaction,
+  ft.Voided AS voided,
+  ft.VoidRemarks AS voidRemarks,
+  ft.seniorcitizenname AS seniorCitizenName,
+  ft.OSCAID AS oscaId,
+  ft.PWDTag AS pwdTag
+FROM dbo.FinishedTransaction ft
+WHERE ft.TransactionNo = @0
+  AND (@1 IS NULL OR ft.TerminalNo = @1)
+ORDER BY ft.DateTime DESC, ft.LogDate DESC;`;
+
+export const RECEIPT_ITEMS_SQL = `
+SELECT
+  fs.LineID AS lineId,
+  fs.ProductID AS productId,
+  fs.ProductCode AS productCode,
+  fs.Barcode AS barcode,
+  COALESCE(NULLIF(fs.Description, ''), NULLIF(p.Description, ''), NULLIF(pos.Description, '')) AS description,
+  fs.UOM AS uom,
+  fs.Qty AS qty,
+  fs.Packing AS packing,
+  fs.TotalQty AS totalQty,
+  fs.Price AS price,
+  fs.Discount AS discount,
+  fs.AmountDiscounted AS amountDiscounted,
+  fs.DiscountedPrice AS discountedPrice,
+  fs.Extended AS extended,
+  fs.[Return] AS returned,
+  fs.ReturnDescription AS returnDescription,
+  fs.ReturnRemarks AS returnRemarks,
+  fs.Voided AS voided,
+  fs.Points AS points,
+  fs.PointsPosted AS pointsPosted,
+  fs.PriceModeCode AS priceModeCode,
+  p.Description AS productDescription,
+  pos.Description AS posDescription,
+  p.reportuom AS reportUom,
+  pos.uom AS posUom,
+  pos.srp AS srp
+FROM dbo.FinishedSales fs
+LEFT JOIN dbo.Products p ON p.ProductID = fs.ProductID
+LEFT JOIN dbo.POS_Products pos
+  ON pos.Barcode = fs.Barcode
+  AND pos.PriceModeCode = fs.PriceModeCode
+WHERE fs.TransactionNo = @0
+  AND (@1 IS NULL OR fs.TerminalNo = @1)
+ORDER BY fs.LineID ASC;`;
+
+export const RECEIPT_PAYMENTS_SQL = `
+SELECT
+  fp.TenderCode AS tenderCode,
+  fp.Description AS description,
+  fp.Amount AS amount,
+  fp.Cash AS cash,
+  fp.Change AS change,
+  fp.ChargeToAccount AS chargeToAccount,
+  fp.AccountNo AS accountNo,
+  fp.ApprovalNo AS approvalNo,
+  fp.Remarks AS remarks,
+  fp.UserID AS userId,
+  fp.TerminalNo AS terminalNo,
+  fp.Voided AS voided,
+  fp.DateTime AS dateTime
+FROM dbo.FinishedPayments fp
+WHERE fp.TransactionNo = @0
+  AND (@1 IS NULL OR fp.TerminalNo = @1)
+ORDER BY fp.DateTime ASC, fp.TenderCode ASC;`;

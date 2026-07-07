@@ -3,11 +3,12 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { yesterday } from '@/lib/dates';
-import type { Branch, ReportParams, Transaction } from '@/lib/types';
+import type { Branch, ReportParams, Transaction, TransactionReceipt } from '@/lib/types';
 import {
   baseUrl,
   useGetBranchesQuery,
   useGetMeQuery,
+  useLazyGetReceiptQuery,
   useLazyGetMeQuery,
   useLazyGetTransactionsQuery,
   useLoginMutation,
@@ -45,6 +46,14 @@ function displayCustomer(row: Transaction): string {
   return meaningfulText(row.customerName) || meaningfulText(row.customerCode) || 'Walk-in';
 }
 
+function receiptCustomer(receipt: TransactionReceipt): string {
+  return (
+    meaningfulText(receipt.header.customerName) ||
+    meaningfulText(receipt.header.customerCode) ||
+    'Walk-in'
+  );
+}
+
 export function Dashboard() {
   const defaultDate = yesterday();
   const [draft, setDraft] = useState({
@@ -60,6 +69,7 @@ export function Dashboard() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [queryCancelled, setQueryCancelled] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const initializedBranches = useRef(false);
   const reportRequest = useRef<{ abort: () => void } | null>(null);
@@ -75,6 +85,10 @@ export function Dashboard() {
     loadTransactions,
     { data: report, isFetching, error: reportError },
   ] = useLazyGetTransactionsQuery();
+  const [
+    loadReceipt,
+    { data: receipt, isFetching: loadingReceipt, error: receiptError },
+  ] = useLazyGetReceiptQuery();
   const onlineBranches = useMemo(
     () => branches.filter((branch) => branch.online),
     [branches],
@@ -225,6 +239,15 @@ export function Dashboard() {
     reportRequest.current = null;
     setQueryCancelled(true);
     setNotice('Report request cancelled.');
+  }
+
+  function openReceipt(row: Transaction) {
+    setReceiptOpen(true);
+    void loadReceipt({
+      branchId: row.branchId,
+      transactionNo: row.transactionNo,
+      terminalNo: row.terminalNo,
+    });
   }
 
   return (
@@ -430,7 +453,15 @@ export function Dashboard() {
                         <tbody>
                           {group.rows.map((row) => (
                             <tr key={`${row.branchId}-${row.transactionNo}`}>
-                              <td className="mono">{row.transactionNo}</td>
+                              <td className="mono">
+                                <button
+                                  type="button"
+                                  className="transaction-link"
+                                  onClick={() => openReceipt(row)}
+                                >
+                                  {row.transactionNo}
+                                </button>
+                              </td>
                               <td>{displayCustomer(row)}</td>
                               <td>{meaningfulText(row.approver) || <span className="muted">—</span>}</td>
                               <td className="amount">{money.format(row.amount)}</td>
@@ -493,6 +524,14 @@ export function Dashboard() {
           cancel={cancelReport}
         />
       )}
+      {receiptOpen && (
+        <ReceiptModal
+          receipt={receipt}
+          loading={loadingReceipt}
+          error={receiptError}
+          close={() => setReceiptOpen(false)}
+        />
+      )}
       {checkingSession && !sessionExpired ? (
         <SessionCheck />
       ) : (
@@ -506,6 +545,129 @@ export function Dashboard() {
         )
       )}
     </main>
+  );
+}
+
+function ReceiptModal({
+  receipt,
+  loading,
+  error,
+  close,
+}: {
+  receipt?: TransactionReceipt;
+  loading: boolean;
+  error: unknown;
+  close: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" onMouseDown={close}>
+      <section
+        className="receipt-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="receipt-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="close" onClick={close} aria-label="Close">×</button>
+        {loading ? (
+          <div className="receipt-state">
+            <span className="session-spinner" aria-hidden="true" />
+            <h2>Loading receipt</h2>
+            <p>Reading transaction lines and payments from the branch database.</p>
+          </div>
+        ) : error ? (
+          <div className="receipt-state">
+            <h2>Receipt unavailable</h2>
+            <p>{requestErrorMessage(error)}</p>
+          </div>
+        ) : receipt ? (
+          <>
+            <header className="receipt-header">
+              <div>
+                <p className="eyebrow">Receipt replica</p>
+                <h2 id="receipt-title">Transaction #{receipt.header.transactionNo}</h2>
+                <span>{receipt.header.branchLocation} · {receipt.header.branchCode}</span>
+              </div>
+              <div className="receipt-total">
+                <span>Total</span>
+                <strong>{money.format(receipt.header.grandTotal)}</strong>
+              </div>
+            </header>
+
+            <section className="receipt-meta">
+              <div><span>Date & time</span><strong>{new Date(receipt.header.dateTime ?? receipt.header.logDate).toLocaleString('en-PH')}</strong></div>
+              <div><span>Customer</span><strong>{receiptCustomer(receipt)}</strong></div>
+              <div><span>Cashier / terminal</span><strong>{receipt.header.userId || '—'} / {receipt.header.terminalNo || '—'}</strong></div>
+              <div><span>Approver</span><strong>{meaningfulText(receipt.header.approver) || '—'}</strong></div>
+              <div><span>Shift</span><strong>{receipt.header.shift ?? '—'}</strong></div>
+              <div><span>Status</span><strong>{receipt.header.voided ? 'Voided' : receipt.totals.returnedItemCount ? 'Returned' : 'Completed'}</strong></div>
+            </section>
+
+            {receipt.header.voidRemarks && (
+              <div className="receipt-note">Void remarks: {receipt.header.voidRemarks}</div>
+            )}
+
+            <section className="receipt-panel">
+              <h3>Items</h3>
+              <div className="receipt-items">
+                {receipt.items.map((item) => (
+                  <article className="receipt-item" key={item.lineId}>
+                    <div>
+                      <strong>{item.description || item.productDescription || item.posDescription || 'Unknown item'}</strong>
+                      <span>
+                        {item.productCode || 'No code'} · {item.barcode || 'No barcode'}
+                        {item.priceModeCode ? ` · ${item.priceModeCode}` : ''}
+                      </span>
+                      {(item.returned || item.voided) && (
+                        <small>
+                          {item.returned ? `Returned${item.returnRemarks ? `: ${item.returnRemarks}` : ''}` : ''}
+                          {item.voided ? ' Voided' : ''}
+                        </small>
+                      )}
+                    </div>
+                    <div className="receipt-item-numbers">
+                      <span>{item.qty.toLocaleString()} {item.uom || item.posUom || item.reportUom || ''} × {money.format(item.price)}</span>
+                      <strong>{money.format(item.extended)}</strong>
+                      {item.amountDiscounted ? <em>Discount {money.format(item.amountDiscounted)}</em> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="receipt-grid">
+              <div className="receipt-panel">
+                <h3>Payments</h3>
+                {receipt.payments.length ? receipt.payments.map((payment, index) => (
+                  <div className="receipt-payment" key={`${payment.tenderCode}-${index}`}>
+                    <span>{payment.description || payment.tenderCode || 'Payment'}</span>
+                    <strong>{money.format(payment.amount)}</strong>
+                    {(payment.approvalNo || payment.remarks) && (
+                      <small>{payment.approvalNo || payment.remarks}</small>
+                    )}
+                  </div>
+                )) : <p className="receipt-empty">No payment lines found.</p>}
+              </div>
+              <div className="receipt-panel receipt-summary">
+                <h3>Summary</h3>
+                <dl>
+                  <div><dt>Subtotal</dt><dd>{money.format(receipt.header.subTotal)}</dd></div>
+                  <div><dt>Discount</dt><dd>{money.format(receipt.header.amountDiscounted)}</dd></div>
+                  <div><dt>Return subtotal</dt><dd>{money.format(receipt.header.returnSubtotal)}</dd></div>
+                  <div><dt>Payment total</dt><dd>{money.format(receipt.totals.paymentTotal)}</dd></div>
+                  <div className="grand"><dt>Grand total</dt><dd>{money.format(receipt.header.grandTotal)}</dd></div>
+                </dl>
+                <p>
+                  {receipt.totals.itemCount} item line{receipt.totals.itemCount === 1 ? '' : 's'} ·
+                  {' '}{receipt.totals.pointsEarned.toLocaleString()} earned ·
+                  {' '}{receipt.totals.pointsRedeemed.toLocaleString()} redeemed
+                </p>
+              </div>
+            </section>
+          </>
+        ) : null}
+      </section>
+    </div>
   );
 }
 

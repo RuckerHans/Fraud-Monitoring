@@ -1,6 +1,12 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
-import type { AuthenticatedUser, Branch, ReportParams, ReportResponse } from '@/lib/types';
+import type {
+  AuthenticatedUser,
+  Branch,
+  ReportParams,
+  ReportResponse,
+  TransactionReceipt,
+} from '@/lib/types';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
@@ -110,6 +116,19 @@ export const api = createApi({
         };
       },
     }),
+    getReceipt: builder.query<
+      TransactionReceipt,
+      { branchId: string; transactionNo: string; terminalNo?: string | null }
+    >({
+      query: ({ branchId, transactionNo, terminalNo }) => ({
+        url: '/reports/transactions/receipt',
+        params: {
+          branchId,
+          transactionNo,
+          ...(terminalNo ? { terminalNo } : {}),
+        },
+      }),
+    }),
     login: builder.mutation<Record<string, unknown>, { username: string; password: string }>({
       query: (body) => ({ url: '/auth/login', method: 'POST', body }),
     }),
@@ -121,6 +140,7 @@ export const {
   useLazyGetMeQuery,
   useGetBranchesQuery,
   useGetTransactionsQuery,
+  useLazyGetReceiptQuery,
   useLazyGetTransactionsQuery,
   useLoginMutation,
 } = api;

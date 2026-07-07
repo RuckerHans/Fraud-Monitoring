@@ -13,7 +13,7 @@ import type { Request, Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ExcelExportService } from './excel-export.service';
-import { ExportQueryDto, ReportQueryDto } from './report-query.dto';
+import { ExportQueryDto, ReceiptQueryDto, ReportQueryDto } from './report-query.dto';
 import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
@@ -34,6 +34,13 @@ export class ReportsController {
     @Req() request: Request & { user?: AuthenticatedUser },
   ) {
     return this.reports.find(query, request.user?.username);
+  }
+
+  @Get('transactions/receipt')
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Build a receipt-style view for one branch transaction' })
+  receipt(@Query() query: ReceiptQueryDto) {
+    return this.reports.receipt(query);
   }
 
   @Get('transactions/export')

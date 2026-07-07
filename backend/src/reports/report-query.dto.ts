@@ -88,3 +88,24 @@ export class ExportQueryDto extends ReportQueryDto {
   @IsOptional()
   pageSize = 100;
 }
+
+export class ReceiptQueryDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(64)
+  @Matches(/^[A-Za-z0-9_-]+$/)
+  branchId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(64)
+  @Matches(/^[A-Za-z0-9_-]+$/)
+  transactionNo!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  @Matches(/^[A-Za-z0-9_-]+$/)
+  terminalNo?: string;
+}

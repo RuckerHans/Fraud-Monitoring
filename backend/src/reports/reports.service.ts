@@ -1,11 +1,25 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { BranchesService } from '../branches/branches.service';
 import { BranchAuditTrailService } from './branch-audit-trail.service';
 import { BranchConnectionFactory } from './branch-connection.factory';
-import { ExportQueryDto, ReportQueryDto } from './report-query.dto';
-import { REPORT_COUNT_SQL, REPORT_EXPORT_SQL, REPORT_PAGE_SQL } from './report.sql';
-import { FraudReportRow, PagedReport } from './report.types';
+import { ExportQueryDto, ReceiptQueryDto, ReportQueryDto } from './report-query.dto';
+import {
+  RECEIPT_HEADER_SQL,
+  RECEIPT_ITEMS_SQL,
+  RECEIPT_PAYMENTS_SQL,
+  REPORT_COUNT_SQL,
+  REPORT_EXPORT_SQL,
+  REPORT_PAGE_SQL,
+} from './report.sql';
+import {
+  FraudReportRow,
+  PagedReport,
+  ReceiptHeader,
+  ReceiptItem,
+  ReceiptPayment,
+  TransactionReceipt,
+} from './report.types';
 import { DatacenterBranch } from '../branches/branch.types';
 import { BranchUnreachableError } from '../common/errors';
 
@@ -123,6 +137,68 @@ export class ReportsService {
       .slice(0, 50_000);
   }
 
+  async receipt(query: ReceiptQueryDto): Promise<TransactionReceipt> {
+    const branch = await this.branches.resolveForConnection(query.branchId);
+    const params = [query.transactionNo, query.terminalNo ?? null];
+    const [headerRows, itemRows, paymentRows] = await this.connections.withConnection(
+      branch,
+      async (source) => Promise.all([
+        source.query(RECEIPT_HEADER_SQL, params),
+        source.query(RECEIPT_ITEMS_SQL, params),
+        source.query(RECEIPT_PAYMENTS_SQL, params),
+      ]),
+    );
+
+    const headerRow = headerRows[0];
+    if (!headerRow) {
+      throw new NotFoundException('The selected transaction was not found.');
+    }
+
+    const transactionNo = String(headerRow.transactionNo);
+    let approver: string | null = null;
+    try {
+      approver =
+        (await this.auditTrail.approversByTransaction(branch, [transactionNo])).get(
+          transactionNo,
+        ) ?? null;
+    } catch (error) {
+      this.logger.warn({
+        event: 'receipt_audit_lookup_failed',
+        branchId: String(branch.id),
+        transactionNo,
+        databaseError: this.databaseErrorForLog(error),
+      });
+    }
+
+    const items: ReceiptItem[] = (itemRows as unknown[]).map((row: any) =>
+      this.normalizeReceiptItem(row),
+    );
+    const payments: ReceiptPayment[] = (paymentRows as unknown[]).map((row: any) =>
+      this.normalizeReceiptPayment(row),
+    );
+    return {
+      header: this.normalizeReceiptHeader(headerRow, branch, approver),
+      items,
+      payments,
+      totals: {
+        itemCount: items.length,
+        returnedItemCount: items.filter((item) => item.returned).length,
+        voidedItemCount: items.filter((item) => item.voided).length,
+        pointsEarned: items.reduce(
+          (sum, item) => sum + (item.pointsPosted && item.points > 0 ? item.points : 0),
+          0,
+        ),
+        pointsRedeemed: items.reduce(
+          (sum, item) => sum + (item.pointsPosted && item.points < 0 ? Math.abs(item.points) : 0),
+          0,
+        ),
+        paymentTotal: payments
+          .filter((payment) => !payment.change && !payment.voided)
+          .reduce((sum, payment) => sum + payment.amount, 0),
+      },
+    };
+  }
+
   private params(query: ReportQueryDto) {
     return [
       query.from,
@@ -198,6 +274,91 @@ export class ReportsService {
       });
       return normalized;
     }
+  }
+
+  private normalizeReceiptHeader(
+    row: any,
+    branch: DatacenterBranch,
+    approver: string | null,
+  ): ReceiptHeader {
+    return {
+      branchId: String(branch.id),
+      branchCode: branch.branchcode,
+      branchLocation: branch.branchlocation || branch.branchcode,
+      transactionNo: String(row.transactionNo),
+      customerCode: row.customerCode ?? null,
+      customerName: row.customerName ?? null,
+      approver,
+      subTotal: Number(row.subTotal ?? 0),
+      grandTotal: Number(row.grandTotal ?? 0),
+      downPayments: Number(row.downPayments ?? 0),
+      discount: Number(row.discount ?? 0),
+      amountDiscounted: Number(row.amountDiscounted ?? 0),
+      allowance: Number(row.allowance ?? 0),
+      returnSubtotal: Number(row.returnSubtotal ?? 0),
+      userId: row.userId ?? null,
+      terminalNo: row.terminalNo ?? null,
+      shift: row.shift === null || row.shift === undefined ? null : Number(row.shift),
+      logDate: row.logDate,
+      dateTime: row.dateTime ?? null,
+      branchCodeFromTransaction: row.branchCodeFromTransaction ?? null,
+      voided: Boolean(row.voided),
+      voidRemarks: row.voidRemarks ?? null,
+      seniorCitizenName: row.seniorCitizenName ?? null,
+      oscaId: row.oscaId ?? null,
+      pwdTag: Boolean(row.pwdTag),
+    };
+  }
+
+  private normalizeReceiptItem(row: any): ReceiptItem {
+    return {
+      lineId: Number(row.lineId ?? 0),
+      productId: row.productId === null || row.productId === undefined
+        ? null
+        : Number(row.productId),
+      productCode: row.productCode ?? null,
+      barcode: row.barcode ?? null,
+      description: row.description ?? null,
+      uom: row.uom ?? null,
+      qty: Number(row.qty ?? 0),
+      packing: Number(row.packing ?? 0),
+      totalQty: Number(row.totalQty ?? 0),
+      price: Number(row.price ?? 0),
+      discount: Number(row.discount ?? 0),
+      amountDiscounted: Number(row.amountDiscounted ?? 0),
+      discountedPrice: Number(row.discountedPrice ?? 0),
+      extended: Number(row.extended ?? 0),
+      returned: Boolean(row.returned),
+      returnDescription: row.returnDescription ?? null,
+      returnRemarks: row.returnRemarks ?? null,
+      voided: Boolean(row.voided),
+      points: Number(row.points ?? 0),
+      pointsPosted: Boolean(row.pointsPosted),
+      priceModeCode: row.priceModeCode ?? null,
+      productDescription: row.productDescription ?? null,
+      posDescription: row.posDescription ?? null,
+      reportUom: row.reportUom ?? null,
+      posUom: row.posUom ?? null,
+      srp: Number(row.srp ?? 0),
+    };
+  }
+
+  private normalizeReceiptPayment(row: any): ReceiptPayment {
+    return {
+      tenderCode: row.tenderCode ?? null,
+      description: row.description ?? null,
+      amount: Number(row.amount ?? 0),
+      cash: Boolean(row.cash),
+      change: Boolean(row.change),
+      chargeToAccount: Boolean(row.chargeToAccount),
+      accountNo: row.accountNo ?? null,
+      approvalNo: row.approvalNo ?? null,
+      remarks: row.remarks ?? null,
+      userId: row.userId ?? null,
+      terminalNo: row.terminalNo ?? null,
+      voided: Boolean(row.voided),
+      dateTime: row.dateTime ?? null,
+    };
   }
 
   private compareRows(left: FraudReportRow, right: FraudReportRow): number {
