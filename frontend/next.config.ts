@@ -14,6 +14,7 @@ const backendProxyTimeout =
 const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  devIndicators: false,
   experimental: {
     // Must exceed the backend's 10-minute connection timeout plus its
     // 20-minute MSSQL request timeout.
