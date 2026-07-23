@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { createPool, type Pool, type RowDataPacket } from 'mysql2/promise';
 import { DatacenterBranch } from '../branches/branch.types';
 
-interface AuditApproverRow extends RowDataPacket {
+interface AuditActorRow extends RowDataPacket {
   transactionNo: string | null;
-  approverName: string | null;
-  approverUserId: string | null;
+  actorName: string | null;
+  actorUserId: string | null;
 }
 
 @Injectable()
@@ -17,25 +17,44 @@ export class BranchAuditTrailService {
     branch: DatacenterBranch,
     transactionNumbers: string[],
   ): Promise<Map<string, string>> {
+    return this.auditNamesByTransaction(branch, transactionNumbers, 'approver');
+  }
+
+  async reprintsByTransaction(
+    branch: DatacenterBranch,
+    transactionNumbers: string[],
+  ): Promise<Map<string, string>> {
+    return this.auditNamesByTransaction(branch, transactionNumbers, 'reprint');
+  }
+
+  private async auditNamesByTransaction(
+    branch: DatacenterBranch,
+    transactionNumbers: string[],
+    auditType: 'approver' | 'reprint',
+  ): Promise<Map<string, string>> {
     const uniqueNumbers = [
       ...new Set(transactionNumbers.map((value) => this.transactionKey(value)).filter(Boolean)),
     ];
-    const approvers = new Map<string, string>();
-    if (uniqueNumbers.length === 0) return approvers;
+    const names = new Map<string, string>();
+    if (uniqueNumbers.length === 0) return names;
 
     const pool = this.createPool(branch);
     try {
       for (const chunk of this.chunks(uniqueNumbers, 500)) {
         const placeholders = chunk.map(() => '?').join(',');
-        const [rows] = await pool.query<AuditApproverRow[]>(
+        const descriptionPredicate =
+          auditType === 'approver'
+            ? "LOWER(COALESCE(description, '')) LIKE '%oic approval%'"
+            : "LOWER(TRIM(COALESCE(description, ''))) = 'reprint'";
+        const [rows] = await pool.query<AuditActorRow[]>(
           `
             SELECT
               CAST(TransactionNo AS CHAR) AS transactionNo,
-              NULLIF(TRIM(name), '') AS approverName,
-              NULLIF(TRIM(UserID), '') AS approverUserId
+              NULLIF(TRIM(name), '') AS actorName,
+              NULLIF(TRIM(UserID), '') AS actorUserId
             FROM audit_trail
             WHERE CAST(TransactionNo AS CHAR) IN (${placeholders})
-              AND LOWER(COALESCE(description, '')) LIKE '%oic approval%'
+              AND ${descriptionPredicate}
             ORDER BY datetime DESC, id DESC
           `,
           chunk,
@@ -43,12 +62,12 @@ export class BranchAuditTrailService {
 
         for (const row of rows) {
           const transactionNo = this.transactionKey(row.transactionNo);
-          if (!transactionNo || approvers.has(transactionNo)) continue;
-          const approver = row.approverName?.trim() || row.approverUserId?.trim();
-          if (approver) approvers.set(transactionNo, approver);
+          if (!transactionNo || names.has(transactionNo)) continue;
+          const name = row.actorName?.trim() || row.actorUserId?.trim();
+          if (name) names.set(transactionNo, name);
         }
       }
-      return approvers;
+      return names;
     } finally {
       await pool.end().catch(() => undefined);
     }

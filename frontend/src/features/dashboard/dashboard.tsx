@@ -446,7 +446,7 @@ export function Dashboard() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Transaction</th><th>Customer</th><th>Approver</th><th>Amount</th><th>Date & time</th>
+                            <th>Transaction</th><th>Customer</th><th>Approver</th><th>Reprint</th><th>Amount</th><th>Date & time</th>
                             <th>Cashier / terminal</th><th>Status</th><th>Points</th>
                           </tr>
                         </thead>
@@ -464,6 +464,7 @@ export function Dashboard() {
                               </td>
                               <td>{displayCustomer(row)}</td>
                               <td>{meaningfulText(row.approver) || <span className="muted">—</span>}</td>
+                              <td>{meaningfulText(row.reprint) || <span className="muted">—</span>}</td>
                               <td className="amount">{money.format(row.amount)}</td>
                               <td>{new Date(row.logDate).toLocaleString('en-PH')}</td>
                               <td>{row.userId || '—'} <span className="muted">/ {row.terminalNo || '—'}</span></td>
@@ -599,6 +600,7 @@ function ReceiptModal({
               <div><span>Customer</span><strong>{receiptCustomer(receipt)}</strong></div>
               <div><span>Cashier / terminal</span><strong>{receipt.header.userId || '—'} / {receipt.header.terminalNo || '—'}</strong></div>
               <div><span>Approver</span><strong>{meaningfulText(receipt.header.approver) || '—'}</strong></div>
+              <div><span>Reprint</span><strong>{meaningfulText(receipt.header.reprint) || '—'}</strong></div>
               <div><span>Shift</span><strong>{receipt.header.shift ?? '—'}</strong></div>
               <div><span>Status</span><strong>{receipt.header.voided ? 'Voided' : receipt.totals.returnedItemCount ? 'Returned' : 'Completed'}</strong></div>
             </section>

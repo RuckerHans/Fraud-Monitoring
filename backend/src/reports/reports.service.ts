@@ -156,11 +156,14 @@ export class ReportsService {
 
     const transactionNo = String(headerRow.transactionNo);
     let approver: string | null = null;
+    let reprint: string | null = null;
     try {
-      approver =
-        (await this.auditTrail.approversByTransaction(branch, [transactionNo])).get(
-          transactionNo,
-        ) ?? null;
+      const [approvers, reprints] = await Promise.all([
+        this.auditTrail.approversByTransaction(branch, [transactionNo]),
+        this.auditTrail.reprintsByTransaction(branch, [transactionNo]),
+      ]);
+      approver = approvers.get(transactionNo) ?? null;
+      reprint = reprints.get(transactionNo) ?? null;
     } catch (error) {
       this.logger.warn({
         event: 'receipt_audit_lookup_failed',
@@ -177,7 +180,7 @@ export class ReportsService {
       this.normalizeReceiptPayment(row),
     );
     return {
-      header: this.normalizeReceiptHeader(headerRow, branch, approver),
+      header: this.normalizeReceiptHeader(headerRow, branch, approver, reprint),
       items,
       payments,
       totals: {
@@ -234,6 +237,7 @@ export class ReportsService {
       branchLocation: branch.branchlocation || branch.branchcode,
       transactionNo: String(row.transactionNo),
       approver: row.approver ?? null,
+      reprint: row.reprint ?? null,
       amount: Number(row.amount ?? 0),
       returned: Boolean(row.returned),
       voided: Boolean(row.voided),
@@ -250,10 +254,11 @@ export class ReportsService {
     if (normalized.length === 0) return normalized;
 
     try {
-      const approvers = await this.auditTrail.approversByTransaction(
-        branch,
-        normalized.map((row) => row.transactionNo),
-      );
+      const transactionNumbers = normalized.map((row) => row.transactionNo);
+      const [approvers, reprints] = await Promise.all([
+        this.auditTrail.approversByTransaction(branch, transactionNumbers),
+        this.auditTrail.reprintsByTransaction(branch, transactionNumbers),
+      ]);
       if (approvers.size === 0) {
         this.logger.info({
           event: 'branch_audit_no_approvers',
@@ -265,6 +270,7 @@ export class ReportsService {
       return normalized.map((row) => ({
         ...row,
         approver: approvers.get(row.transactionNo) ?? null,
+        reprint: reprints.get(row.transactionNo) ?? null,
       }));
     } catch (error) {
       this.logger.warn({
@@ -280,6 +286,7 @@ export class ReportsService {
     row: any,
     branch: DatacenterBranch,
     approver: string | null,
+    reprint: string | null,
   ): ReceiptHeader {
     return {
       branchId: String(branch.id),
@@ -289,6 +296,7 @@ export class ReportsService {
       customerCode: row.customerCode ?? null,
       customerName: row.customerName ?? null,
       approver,
+      reprint,
       subTotal: Number(row.subTotal ?? 0),
       grandTotal: Number(row.grandTotal ?? 0),
       downPayments: Number(row.downPayments ?? 0),

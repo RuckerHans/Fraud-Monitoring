@@ -233,7 +233,7 @@ input:focus, select:focus { border-color: #7897e6; box-shadow: 0 0 0 3px #eaf0ff
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 .branch-result-card table {
-  min-width: 1160px;
+  min-width: 1280px;
   table-layout: fixed;
 }
 th {
@@ -246,15 +246,16 @@ td {
   font-size: 12px; overflow: hidden; text-overflow: ellipsis;
 }
 tbody tr:hover { background: #fbfcff; }
-.branch-result-card th:nth-child(1), .branch-result-card td:nth-child(1) { width: 130px; }
-.branch-result-card th:nth-child(2), .branch-result-card td:nth-child(2) { width: 130px; }
-.branch-result-card th:nth-child(3), .branch-result-card td:nth-child(3) { width: 165px; }
-.branch-result-card th:nth-child(4), .branch-result-card td:nth-child(4) { width: 135px; text-align: right; }
-.branch-result-card th:nth-child(5), .branch-result-card td:nth-child(5) { width: 195px; }
-.branch-result-card th:nth-child(6), .branch-result-card td:nth-child(6) { width: 170px; }
-.branch-result-card th:nth-child(7), .branch-result-card td:nth-child(7) { width: 140px; }
-.branch-result-card th:nth-child(8), .branch-result-card td:nth-child(8) { width: 170px; }
-.branch-result-card td:nth-child(8) { overflow: visible; }
+.branch-result-card th:nth-child(1), .branch-result-card td:nth-child(1) { width: 120px; }
+.branch-result-card th:nth-child(2), .branch-result-card td:nth-child(2) { width: 120px; }
+.branch-result-card th:nth-child(3), .branch-result-card td:nth-child(3) { width: 155px; }
+.branch-result-card th:nth-child(4), .branch-result-card td:nth-child(4) { width: 155px; }
+.branch-result-card th:nth-child(5), .branch-result-card td:nth-child(5) { width: 125px; text-align: right; }
+.branch-result-card th:nth-child(6), .branch-result-card td:nth-child(6) { width: 185px; }
+.branch-result-card th:nth-child(7), .branch-result-card td:nth-child(7) { width: 160px; }
+.branch-result-card th:nth-child(8), .branch-result-card td:nth-child(8) { width: 120px; }
+.branch-result-card th:nth-child(9), .branch-result-card td:nth-child(9) { width: 160px; }
+.branch-result-card td:nth-child(9) { overflow: visible; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #27426e; font-weight: 650; }
 .transaction-link {
   padding: 0; border: 0; background: none; color: #2457d6;

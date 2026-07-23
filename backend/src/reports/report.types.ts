@@ -6,6 +6,7 @@ export interface FraudReportRow {
   customerCode: string | null;
   customerName: string | null;
   approver: string | null;
+  reprint: string | null;
   amount: number;
   logDate: Date | string;
   userId: string | null;
@@ -32,6 +33,7 @@ export interface ReceiptHeader {
   customerCode: string | null;
   customerName: string | null;
   approver: string | null;
+  reprint: string | null;
   subTotal: number;
   grandTotal: number;
   downPayments: number;
