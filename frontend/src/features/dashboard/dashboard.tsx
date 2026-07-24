@@ -136,7 +136,6 @@ export function Dashboard() {
       returned: rows.filter((row) => row.returned).length,
       voided: rows.filter((row) => row.voided).length,
       reprinted: rows.filter((row) => Boolean(meaningfulText(row.reprint))).length,
-      totalAmount: rows.reduce((sum, row) => sum + row.amount, 0),
     };
   }, [report]);
   const groupedResults = useMemo(() => {
@@ -396,10 +395,6 @@ export function Dashboard() {
             <div><small>Reprints on page</small><strong>{stats.reprinted}</strong></div>
           </article>
           <article>
-            <span className="stat-icon green">₱</span>
-            <div><small>Total amount on page</small><strong>{money.format(stats.totalAmount)}</strong></div>
-          </article>
-          <article>
             <span className="stat-icon slate">#</span>
             <div><small>Matching records</small><strong>{report?.meta.total ?? 0}</strong></div>
           </article>
@@ -431,6 +426,7 @@ export function Dashboard() {
               {groupedResults.map((group) => {
                 const returnCount = group.rows.filter((row) => row.returned).length;
                 const voidCount = group.rows.filter((row) => row.voided).length;
+                const branchTotal = group.rows.reduce((sum, row) => sum + row.amount, 0);
                 return (
                   <article className="branch-result-card" key={group.branchId}>
                     <header className="branch-result-header">
@@ -445,6 +441,7 @@ export function Dashboard() {
                         <span><strong>{group.rows.length}</strong> records</span>
                         <span className="return"><strong>{returnCount}</strong> returned</span>
                         <span className="void"><strong>{voidCount}</strong> voided</span>
+                        <span className="total"><strong>{money.format(branchTotal)}</strong> total</span>
                       </div>
                     </header>
                     <div className="table-wrap">
