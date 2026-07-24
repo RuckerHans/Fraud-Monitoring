@@ -136,6 +136,7 @@ export interface TransactionReceipt {
     voidedItemCount: number;
     pointsEarned: number;
     pointsRedeemed: number;
+    reprintCount: number;
     paymentTotal: number;
   };
 }

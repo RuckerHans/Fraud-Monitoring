@@ -601,6 +601,7 @@ function ReceiptModal({
               <div><span>Cashier / terminal</span><strong>{receipt.header.userId || '—'} / {receipt.header.terminalNo || '—'}</strong></div>
               <div><span>Approver</span><strong>{meaningfulText(receipt.header.approver) || '—'}</strong></div>
               <div><span>Reprint</span><strong>{meaningfulText(receipt.header.reprint) || '—'}</strong></div>
+              <div><span>Reprint count</span><strong>{receipt.totals.reprintCount.toLocaleString()}</strong></div>
               <div><span>Shift</span><strong>{receipt.header.shift ?? '—'}</strong></div>
               <div><span>Status</span><strong>{receipt.header.voided ? 'Voided' : receipt.totals.returnedItemCount ? 'Returned' : 'Completed'}</strong></div>
             </section>

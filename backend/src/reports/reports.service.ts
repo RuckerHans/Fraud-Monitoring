@@ -157,13 +157,16 @@ export class ReportsService {
     const transactionNo = String(headerRow.transactionNo);
     let approver: string | null = null;
     let reprint: string | null = null;
+    let reprintCount = 0;
     try {
-      const [approvers, reprints] = await Promise.all([
+      const [approvers, reprints, reprintCounts] = await Promise.all([
         this.auditTrail.approversByTransaction(branch, [transactionNo]),
         this.auditTrail.reprintsByTransaction(branch, [transactionNo]),
+        this.auditTrail.reprintCountsByTransaction(branch, [transactionNo]),
       ]);
       approver = approvers.get(transactionNo) ?? null;
       reprint = reprints.get(transactionNo) ?? null;
+      reprintCount = reprintCounts.get(transactionNo) ?? 0;
     } catch (error) {
       this.logger.warn({
         event: 'receipt_audit_lookup_failed',
@@ -195,6 +198,7 @@ export class ReportsService {
           (sum, item) => sum + (item.pointsPosted && item.points < 0 ? Math.abs(item.points) : 0),
           0,
         ),
+        reprintCount,
         paymentTotal: payments
           .filter((payment) => !payment.voided && payment.amount > 0)
           .reduce((sum, payment) => sum + payment.amount, 0),

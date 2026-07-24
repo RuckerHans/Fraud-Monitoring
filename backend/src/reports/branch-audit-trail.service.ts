@@ -27,6 +27,48 @@ export class BranchAuditTrailService {
     return this.auditNamesByTransaction(branch, transactionNumbers, 'reprint');
   }
 
+  async reprintCountsByTransaction(
+    branch: DatacenterBranch,
+    transactionNumbers: string[],
+  ): Promise<Map<string, number>> {
+    const uniqueNumbers = [
+      ...new Set(transactionNumbers.map((value) => this.transactionKey(value)).filter(Boolean)),
+    ];
+    const counts = new Map<string, number>();
+    if (uniqueNumbers.length === 0) return counts;
+
+    const pool = this.createPool(branch);
+    try {
+      for (const chunk of this.chunks(uniqueNumbers, 500)) {
+        const placeholders = chunk.map(() => '?').join(',');
+        const [rows] = await pool.query<Array<RowDataPacket & {
+          transactionNo: string | null;
+          reprintCount: number | string | null;
+        }>>(
+          `
+            SELECT
+              CAST(TransactionNo AS CHAR) AS transactionNo,
+              COUNT(1) AS reprintCount
+            FROM audit_trail
+            WHERE CAST(TransactionNo AS CHAR) IN (${placeholders})
+              AND LOWER(TRIM(COALESCE(description, ''))) = 'reprint'
+            GROUP BY CAST(TransactionNo AS CHAR)
+          `,
+          chunk,
+        );
+
+        for (const row of rows) {
+          const transactionNo = this.transactionKey(row.transactionNo);
+          if (!transactionNo) continue;
+          counts.set(transactionNo, Number(row.reprintCount ?? 0));
+        }
+      }
+      return counts;
+    } finally {
+      await pool.end().catch(() => undefined);
+    }
+  }
+
   private async auditNamesByTransaction(
     branch: DatacenterBranch,
     transactionNumbers: string[],
