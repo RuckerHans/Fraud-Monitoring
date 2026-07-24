@@ -95,6 +95,18 @@ SELECT TOP (50000) *
 FROM Filtered
 ORDER BY logDate DESC, transactionNo DESC;`;
 
+export function reprintedReportSql(transactionCount: number): string {
+  const placeholders = Array.from(
+    { length: transactionCount },
+    (_, index) => `@${index + 6}`,
+  ).join(', ');
+  return `${REPORT_CTE}
+SELECT TOP (50000) *
+FROM Filtered
+WHERE transactionNo IN (${placeholders})
+ORDER BY logDate DESC, transactionNo DESC;`;
+}
+
 export const RECEIPT_HEADER_SQL = `
 SELECT TOP (1)
   ft.TransactionNo AS transactionNo,

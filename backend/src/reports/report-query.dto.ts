@@ -74,6 +74,8 @@ export class ReportQueryDto {
   @ApiPropertyOptional({
     enum: ['returnedOrVoided', 'returned', 'voided', 'all'],
     default: 'returnedOrVoided',
+    description:
+      '`returnedOrVoided` includes returned, voided, and reprinted transactions.',
   })
   @IsOptional()
   @IsIn(['returnedOrVoided', 'returned', 'voided', 'all'])

@@ -69,6 +69,36 @@ export class BranchAuditTrailService {
     }
   }
 
+  async reprintTransactionNumbers(
+    branch: DatacenterBranch,
+    from: string,
+    to: string,
+  ): Promise<string[]> {
+    const transactionNumbers = new Set<string>();
+    const pool = this.createPool(branch);
+    try {
+      const [rows] = await pool.query<Array<RowDataPacket & {
+        transactionNo: string | null;
+      }>>(
+        `
+          SELECT DISTINCT CAST(TransactionNo AS CHAR) AS transactionNo
+          FROM audit_trail
+          WHERE datetime >= ?
+            AND datetime < DATE_ADD(?, INTERVAL 1 DAY)
+            AND LOWER(TRIM(COALESCE(description, ''))) = 'reprint'
+        `,
+        [from, to],
+      );
+      for (const row of rows) {
+        const transactionNo = this.transactionKey(row.transactionNo);
+        if (transactionNo) transactionNumbers.add(transactionNo);
+      }
+      return [...transactionNumbers];
+    } finally {
+      await pool.end().catch(() => undefined);
+    }
+  }
+
   private async auditNamesByTransaction(
     branch: DatacenterBranch,
     transactionNumbers: string[],

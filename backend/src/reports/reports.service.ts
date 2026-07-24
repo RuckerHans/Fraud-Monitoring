@@ -11,6 +11,7 @@ import {
   REPORT_COUNT_SQL,
   REPORT_EXPORT_SQL,
   REPORT_PAGE_SQL,
+  reprintedReportSql,
 } from './report.sql';
 import {
   FraudReportRow,
@@ -52,6 +53,10 @@ export class ReportsService {
     for (const branch of branches) {
       const started = Date.now();
       try {
+        const reprintTransactionNumbers = await this.reprintTransactionNumbersForDefault(
+          branch,
+          query,
+        );
         const [branchRows, countRows] = await this.connections.withConnection(
           branch,
           async (source) => {
@@ -61,11 +66,18 @@ export class ReportsService {
               perBranchLimit,
             ]);
             const totals = await source.query(REPORT_COUNT_SQL, params);
-            return [pageRows, totals];
+            const reprintRows = await this.reprintedRows(
+              source,
+              query,
+              reprintTransactionNumbers,
+            );
+            return [this.mergeDefaultRows(pageRows, reprintRows), totals, reprintRows];
           },
         );
         successfulBranches += 1;
-        total += Number(countRows[0]?.total ?? 0);
+        total +=
+          Number(countRows[0]?.total ?? 0) +
+          this.pureReprintRows(branchRows).length;
         rows.push(...(await this.normalizeRows(branchRows, branch)));
         this.logQuery('branch_query', branch, query, user, started, branchRows.length);
       } catch (error) {
@@ -112,8 +124,15 @@ export class ReportsService {
     for (const branch of branches) {
       const started = Date.now();
       try {
-        const branchRows = await this.connections.withConnection(branch, (source) =>
-          source.query(REPORT_EXPORT_SQL, this.params(query)),
+        const reprintTransactionNumbers = await this.reprintTransactionNumbersForDefault(
+          branch,
+          query,
+        );
+        const branchRows = await this.connections.withConnection(branch, async (source) =>
+          this.mergeDefaultRows(
+            await source.query(REPORT_EXPORT_SQL, this.params(query)),
+            await this.reprintedRows(source, query, reprintTransactionNumbers),
+          ),
         );
         successfulBranches += 1;
         rows.push(...(await this.normalizeRows(branchRows, branch)));
@@ -206,14 +225,17 @@ export class ReportsService {
     };
   }
 
-  private params(query: ReportQueryDto) {
+  private params(
+    query: ReportQueryDto,
+    exceptionOverride?: ReportQueryDto['exception'],
+  ) {
     return [
       query.from,
       query.to,
       query.returned === undefined ? null : Number(query.returned),
       query.voided === undefined ? null : Number(query.voided),
       query.points ?? null,
-      query.exception ?? 'returnedOrVoided',
+      exceptionOverride ?? query.exception ?? 'returnedOrVoided',
     ];
   }
 
@@ -231,6 +253,68 @@ export class ReportsService {
       throw new BadRequestException('At most 100 branches may be selected.');
     }
     return ids;
+  }
+
+  private async reprintTransactionNumbersForDefault(
+    branch: DatacenterBranch,
+    query: ReportQueryDto,
+  ): Promise<string[]> {
+    if (query.exception !== 'returnedOrVoided') return [];
+    try {
+      return await this.auditTrail.reprintTransactionNumbers(branch, query.from, query.to);
+    } catch (error) {
+      this.logger.warn({
+        event: 'branch_reprint_directory_failed',
+        branchId: String(branch.id),
+        databaseError: this.databaseErrorForLog(error),
+      });
+      return [];
+    }
+  }
+
+  private async reprintedRows(
+    source: { query: (sql: string, params: unknown[]) => Promise<any[]> },
+    query: ReportQueryDto,
+    transactionNumbers: string[],
+  ): Promise<any[]> {
+    if (query.exception !== 'returnedOrVoided' || transactionNumbers.length === 0) {
+      return [];
+    }
+    const rows: any[] = [];
+    for (const chunk of this.chunks(transactionNumbers, 500)) {
+      rows.push(
+        ...(await source.query(reprintedReportSql(chunk.length), [
+          ...this.params(query, 'all'),
+          ...chunk,
+        ])),
+      );
+    }
+    return rows;
+  }
+
+  private mergeDefaultRows(baseRows: any[], reprintRows: any[]): any[] {
+    if (reprintRows.length === 0) return baseRows;
+    const merged: any[] = [];
+    const seen = new Set<string>();
+    for (const row of baseRows) {
+      merged.push(row);
+      seen.add(this.rowKey(row));
+    }
+    for (const row of this.pureReprintRows(reprintRows)) {
+      const key = this.rowKey(row);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(row);
+    }
+    return merged;
+  }
+
+  private pureReprintRows(rows: any[]): any[] {
+    return rows.filter((row) => !row.returned && !row.voided);
+  }
+
+  private rowKey(row: any): string {
+    return `${String(row.transactionNo)}:${String(row.terminalNo ?? '')}`;
   }
 
   private normalize(row: any, branch: DatacenterBranch): FraudReportRow {
@@ -431,5 +515,13 @@ export class ReportsService {
     return message
       .replace(/(password|user(?:name)?)\s*[=:]\s*[^,; ]+/gi, '$1=[REDACTED]')
       .slice(0, 500);
+  }
+
+  private chunks<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let index = 0; index < items.length; index += size) {
+      chunks.push(items.slice(index, index + size));
+    }
+    return chunks;
   }
 }

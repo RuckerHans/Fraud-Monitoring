@@ -135,7 +135,8 @@ export function Dashboard() {
     return {
       returned: rows.filter((row) => row.returned).length,
       voided: rows.filter((row) => row.voided).length,
-      points: rows.reduce((sum, row) => sum + row.pointsRedeemed, 0),
+      reprinted: rows.filter((row) => Boolean(meaningfulText(row.reprint))).length,
+      totalAmount: rows.reduce((sum, row) => sum + row.amount, 0),
     };
   }, [report]);
   const groupedResults = useMemo(() => {
@@ -348,7 +349,7 @@ export function Dashboard() {
                 exception: event.target.value as ReportParams['exception'],
               })}
             >
-              <option value="returnedOrVoided">Returned and voided</option>
+              <option value="returnedOrVoided">Returned, voided, reprinted</option>
               <option value="returned">Returned only</option>
               <option value="voided">Voided only</option>
               <option value="all">All activity</option>
@@ -392,7 +393,11 @@ export function Dashboard() {
           </article>
           <article>
             <span className="stat-icon blue">◆</span>
-            <div><small>Points redeemed</small><strong>{stats.points.toLocaleString()}</strong></div>
+            <div><small>Reprints on page</small><strong>{stats.reprinted}</strong></div>
+          </article>
+          <article>
+            <span className="stat-icon green">₱</span>
+            <div><small>Total amount on page</small><strong>{money.format(stats.totalAmount)}</strong></div>
           </article>
           <article>
             <span className="stat-icon slate">#</span>
