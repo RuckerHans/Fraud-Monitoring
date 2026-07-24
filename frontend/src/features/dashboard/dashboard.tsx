@@ -349,8 +349,12 @@ export function Dashboard() {
               })}
             >
               <option value="returnedOrVoided">Returned, voided, reprinted</option>
+              <option value="returnedAndVoided">Returned and voided</option>
+              <option value="reprinted">Reprinted only</option>
               <option value="returned">Returned only</option>
               <option value="voided">Voided only</option>
+              <option value="returnedOrReprinted">Returned + reprinted</option>
+              <option value="voidedOrReprinted">Voided + reprinted</option>
               <option value="all">All activity</option>
             </select>
           </label>

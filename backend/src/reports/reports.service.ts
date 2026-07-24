@@ -3,7 +3,12 @@ import { PinoLogger } from 'nestjs-pino';
 import { BranchesService } from '../branches/branches.service';
 import { BranchAuditTrailService } from './branch-audit-trail.service';
 import { BranchConnectionFactory } from './branch-connection.factory';
-import { ExportQueryDto, ReceiptQueryDto, ReportQueryDto } from './report-query.dto';
+import {
+  ExportQueryDto,
+  ReceiptQueryDto,
+  ReportException,
+  ReportQueryDto,
+} from './report-query.dto';
 import {
   RECEIPT_HEADER_SQL,
   RECEIPT_ITEMS_SQL,
@@ -44,7 +49,6 @@ export class ReportsService {
     this.validateRange(query);
     const branchIds = this.branchIds(query);
     const branches = await this.branches.resolveManyForConnection(branchIds);
-    const params = this.params(query);
     const rows: FraudReportRow[] = [];
     const warnings: string[] = [];
     let total = 0;
@@ -57,27 +61,32 @@ export class ReportsService {
           branch,
           query,
         );
-        const [branchRows, countRows] = await this.connections.withConnection(
+        const [branchRows, countRows, reprintRows] = await this.connections.withConnection(
           branch,
           async (source) => {
-            const pageRows = await source.query(REPORT_PAGE_SQL, [
-              ...params,
-              0,
-              perBranchLimit,
-            ]);
-            const totals = await source.query(REPORT_COUNT_SQL, params);
+            const sqlException = this.sqlException(query);
+            const pageRows = sqlException
+              ? await source.query(REPORT_PAGE_SQL, [
+                ...this.params(query, sqlException),
+                0,
+                perBranchLimit,
+              ])
+              : [];
+            const totals = sqlException
+              ? await source.query(REPORT_COUNT_SQL, this.params(query, sqlException))
+              : [{ total: 0 }];
             const reprintRows = await this.reprintedRows(
               source,
               query,
               reprintTransactionNumbers,
             );
-            return [this.mergeDefaultRows(pageRows, reprintRows), totals, reprintRows];
+            return [this.mergeExceptionRows(query, pageRows, reprintRows), totals, reprintRows];
           },
         );
         successfulBranches += 1;
         total +=
           Number(countRows[0]?.total ?? 0) +
-          this.pureReprintRows(branchRows).length;
+          this.additionalReprintRows(query, reprintRows).length;
         rows.push(...(await this.normalizeRows(branchRows, branch)));
         this.logQuery('branch_query', branch, query, user, started, branchRows.length);
       } catch (error) {
@@ -129,8 +138,9 @@ export class ReportsService {
           query,
         );
         const branchRows = await this.connections.withConnection(branch, async (source) =>
-          this.mergeDefaultRows(
-            await source.query(REPORT_EXPORT_SQL, this.params(query)),
+          this.mergeExceptionRows(
+            query,
+            await this.exportBaseRows(source, query),
             await this.reprintedRows(source, query, reprintTransactionNumbers),
           ),
         );
@@ -227,7 +237,7 @@ export class ReportsService {
 
   private params(
     query: ReportQueryDto,
-    exceptionOverride?: ReportQueryDto['exception'],
+    exceptionOverride?: Extract<ReportException, 'returnedOrVoided' | 'returned' | 'voided' | 'all'>,
   ) {
     return [
       query.from,
@@ -259,7 +269,7 @@ export class ReportsService {
     branch: DatacenterBranch,
     query: ReportQueryDto,
   ): Promise<string[]> {
-    if (query.exception !== 'returnedOrVoided') return [];
+    if (!this.includesReprints(query.exception)) return [];
     try {
       return await this.auditTrail.reprintTransactionNumbers(branch, query.from, query.to);
     } catch (error) {
@@ -277,7 +287,7 @@ export class ReportsService {
     query: ReportQueryDto,
     transactionNumbers: string[],
   ): Promise<any[]> {
-    if (query.exception !== 'returnedOrVoided' || transactionNumbers.length === 0) {
+    if (!this.includesReprints(query.exception) || transactionNumbers.length === 0) {
       return [];
     }
     const rows: any[] = [];
@@ -292,7 +302,20 @@ export class ReportsService {
     return rows;
   }
 
-  private mergeDefaultRows(baseRows: any[], reprintRows: any[]): any[] {
+  private async exportBaseRows(
+    source: { query: (sql: string, params: unknown[]) => Promise<any[]> },
+    query: ReportQueryDto,
+  ): Promise<any[]> {
+    const sqlException = this.sqlException(query);
+    if (!sqlException) return [];
+    return source.query(REPORT_EXPORT_SQL, this.params(query, sqlException));
+  }
+
+  private mergeExceptionRows(
+    query: ReportQueryDto,
+    baseRows: any[],
+    reprintRows: any[],
+  ): any[] {
     if (reprintRows.length === 0) return baseRows;
     const merged: any[] = [];
     const seen = new Set<string>();
@@ -300,7 +323,7 @@ export class ReportsService {
       merged.push(row);
       seen.add(this.rowKey(row));
     }
-    for (const row of this.pureReprintRows(reprintRows)) {
+    for (const row of this.additionalReprintRows(query, reprintRows)) {
       const key = this.rowKey(row);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -309,8 +332,50 @@ export class ReportsService {
     return merged;
   }
 
-  private pureReprintRows(rows: any[]): any[] {
-    return rows.filter((row) => !row.returned && !row.voided);
+  private additionalReprintRows(query: ReportQueryDto, rows: any[]): any[] {
+    switch (query.exception) {
+      case 'returnedOrVoided':
+        return rows.filter((row) => !row.returned && !row.voided);
+      case 'returnedOrReprinted':
+        return rows.filter((row) => !row.returned);
+      case 'voidedOrReprinted':
+        return rows.filter((row) => !row.voided);
+      case 'reprinted':
+        return rows;
+      default:
+        return [];
+    }
+  }
+
+  private sqlException(
+    query: ReportQueryDto,
+  ): Extract<ReportException, 'returnedOrVoided' | 'returned' | 'voided' | 'all'> | null {
+    switch (query.exception) {
+      case 'returnedAndVoided':
+        return 'returnedOrVoided';
+      case 'returnedOrReprinted':
+        return 'returned';
+      case 'voidedOrReprinted':
+        return 'voided';
+      case 'reprinted':
+        return null;
+      case 'returnedOrVoided':
+      case 'returned':
+      case 'voided':
+      case 'all':
+        return query.exception;
+      default:
+        return 'returnedOrVoided';
+    }
+  }
+
+  private includesReprints(exception: ReportException): boolean {
+    return [
+      'returnedOrVoided',
+      'reprinted',
+      'returnedOrReprinted',
+      'voidedOrReprinted',
+    ].includes(exception);
   }
 
   private rowKey(row: any): string {

@@ -20,6 +20,19 @@ const toBoolean = ({ value }: { value: unknown }) => {
   return value;
 };
 
+export const REPORT_EXCEPTIONS = [
+  'returnedOrVoided',
+  'returnedAndVoided',
+  'reprinted',
+  'returned',
+  'voided',
+  'returnedOrReprinted',
+  'voidedOrReprinted',
+  'all',
+] as const;
+
+export type ReportException = (typeof REPORT_EXCEPTIONS)[number];
+
 export class ReportQueryDto {
   @ApiProperty({
     description: 'Comma-separated branch IDs. Selected branches are queried sequentially.',
@@ -72,15 +85,14 @@ export class ReportQueryDto {
   points?: 'earned' | 'redeemed' | 'any';
 
   @ApiPropertyOptional({
-    enum: ['returnedOrVoided', 'returned', 'voided', 'all'],
+    enum: REPORT_EXCEPTIONS,
     default: 'returnedOrVoided',
     description:
-      '`returnedOrVoided` includes returned, voided, and reprinted transactions.',
+      '`returnedOrVoided` includes returned, voided, and reprinted transactions. `returnedAndVoided` is the old returned/voided-only behavior.',
   })
   @IsOptional()
-  @IsIn(['returnedOrVoided', 'returned', 'voided', 'all'])
-  exception: 'returnedOrVoided' | 'returned' | 'voided' | 'all' =
-    'returnedOrVoided';
+  @IsIn(REPORT_EXCEPTIONS)
+  exception: ReportException = 'returnedOrVoided';
 }
 
 export class ExportQueryDto extends ReportQueryDto {

@@ -49,7 +49,15 @@ export interface ReportParams {
   returned?: boolean;
   voided?: boolean;
   points?: 'earned' | 'redeemed' | 'any';
-  exception?: 'returnedOrVoided' | 'returned' | 'voided' | 'all';
+  exception?:
+    | 'returnedOrVoided'
+    | 'returnedAndVoided'
+    | 'reprinted'
+    | 'returned'
+    | 'voided'
+    | 'returnedOrReprinted'
+    | 'voidedOrReprinted'
+    | 'all';
 }
 
 export interface ReceiptHeader {
